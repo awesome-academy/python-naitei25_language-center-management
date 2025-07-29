@@ -11,7 +11,7 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'japanese_learning_platform.settings.development')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'japanese_learning_platform.settings')
 # Trong môi trường sản xuất, bạn sẽ cần cấu hình biến môi trường này để trỏ đến production.py
 # Ví dụ: os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'japanese_learning_platform.settings.production')
 

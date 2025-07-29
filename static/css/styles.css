@@ -1,0 +1,255 @@
+/* General Body and Container */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background: url("{% static 'img/background.jpg' %}") no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+    overflow: hidden; /* Prevent scrollbar if content is slightly larger than viewport */
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.login-box {
+    background-color: rgba(255, 255, 255, 0.95); /* Nền trắng hơi trong suốt */
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    width: 400px; /* Độ rộng cố định */
+    max-width: 90%; /* Giới hạn độ rộng trên màn hình nhỏ */
+    text-align: center;
+    box-sizing: border-box;
+    animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.login-box h2 {
+    margin-bottom: 30px;
+    color: #333;
+    font-weight: 700;
+    font-size: 2.4em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"], /* Thêm kiểu cho input email */
+.form-group input[type="password"] {
+    width: 100%;
+    padding: 14px 18px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1.05em;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    background-color: #f9f9f9;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+    background-color: #fff;
+}
+
+/* Checkbox specific styling */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px; /* Tăng kích thước checkbox */
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    cursor: pointer;
+    font-weight: 400; /* Nhẹ hơn cho label checkbox */
+    color: #666;
+}
+
+/* Submit Button */
+.btn-login {
+    width: 100%;
+    padding: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    margin-top: 25px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-login:hover {
+    background-color: #0056b3;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+.btn-login:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Messages and Errors (Django messages framework) */
+.messages {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.messages li {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    font-size: 0.95em;
+    font-weight: 500;
+    text-align: left;
+}
+
+.messages .success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.messages .error, .errorlist { /* Áp dụng cho cả form errors và messages.error */
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    list-style: none; /* Loại bỏ dấu chấm của ul */
+    padding-left: 15px; /* Giữ padding để nội dung không bị sát cạnh */
+}
+
+.errorlist li {
+    margin-bottom: 5px;
+}
+
+/* Social Login */
+.social-login {
+    margin-top: 35px;
+    padding-top: 25px;
+    border-top: 1px solid #eee;
+}
+
+.social-login p {
+    color: #777;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+
+.social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.social-icons .icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.6em;
+    color: white;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.social-icons .icon.facebook {
+    background-color: #3b5998;
+}
+
+.social-icons .icon.google {
+    background-color: #ea4335;
+}
+
+.social-icons .icon:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Links */
+.forgot-password,
+.register-link {
+    margin-top: 25px;
+    font-size: 0.95em;
+}
+
+.forgot-password a,
+.register-link a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.forgot-password a:hover,
+.register-link a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .login-box {
+        padding: 30px 20px;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    body {
+        background-position: top center;
+        background-size: cover;
+    }
+}
