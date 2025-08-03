@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from decouple import config
 from dotenv import load_dotenv
+load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 from constants import (
     MIN_PASSWORD_LENGTH,
     SESSION_COOKIE_AGE_SECONDS
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     "notifications.apps.NotificationsConfig",
     "social_django",
     "django_recaptcha",
+    'nested_admin',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+{% block content %}
+  <h1>{% blocktrans with course_name=course.name %}Lessons for “{{ course_name }}”{% endblocktrans %}</h1>
+  <a href="{% url 'courses:lesson_add' course_id=course.id %}" class="btn btn-primary">{% trans "Add Lesson" %}</a>
+
+  <table class="table">
+    <thead>…</thead>
+    <tbody>
+      {% for lesson in lessons %}
+        <tr id="lesson-row-{{ lesson.pk }}">
+          <td>{{ lesson.order }}</td>
+          <td>{{ lesson.title }}</td>
+          <td>
+            <a href="{% url 'courses:lesson_edit' pk=lesson.pk %}" class="btn btn-sm btn-warning">{% trans "Edit" %}</a>
+            <button class="btn btn-sm btn-danger js-delete-lesson"
+                    data-url="{% url 'courses:lesson_delete' pk=lesson.pk %}"
+                    data-id="{{ lesson.pk }}">
+              {% trans "Delete" %}
+            </button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# include external JS #}
+  <script src="{% static 'js/lesson_list.js' %}"></script>
+{% endblock %}

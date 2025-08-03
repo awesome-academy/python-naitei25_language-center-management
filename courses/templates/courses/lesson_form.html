@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+  {% if view.object %}
+    <h1>{% trans "Edit Lesson" %}</h1>
+  {% else %}
+    <h1>{% trans "Add Lesson" %}</h1>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="form-group">
+      {{ form.course.label_tag }} {{ form.course }}
+    </div>
+    <div class="form-group">
+      {{ form.title.label_tag }} {{ form.title }}
+      {% if form.title.errors %}
+        <div class="text-danger">{{ form.title.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="form-group">
+      {{ form.description.label_tag }} {{ form.description }}
+      {% if form.description.errors %}
+        <div class="text-danger">{{ form.description.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="form-group">
+      {{ form.order.label_tag }} {{ form.order }}
+      {% if form.order.errors %}
+        <div class="text-danger">{{ form.order.errors }}</div>
+      {% endif %}
+    </div>
+    <div class="form-group">
+      {{ form.video_url.label_tag }} {{ form.video_url }}
+      {% if form.video_url.errors %}
+        <div class="text-danger">{{ form.video_url.errors }}</div>
+      {% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-success">
+      {% trans "Save" %}
+    </button>
+    <a href="{% url 'courses:lesson_list' course_id=view.kwargs.course_id %}" class="btn btn-secondary">
+      {% trans "Cancel" %}
+    </a>
+  </form>
+{% endblock %}
