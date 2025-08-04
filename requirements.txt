@@ -1,11 +1,10 @@
-<<<<<<< HEAD
-=======
 Django==5.0.6
-psycopg2-binary # Nếu dùng PostgreSQL
-python-dotenv # Để quản lý biến môi trường
-Pillow # Hỗ trợ xử lý ảnh (cho avatar, v.v.)
-django-crispy-forms # Tùy chọn: để render form đẹp hơn
-django-allauth # Tùy chọn: cho social login (Google/Facebook)
-django-chartjs 
->>>>>>> bb52ba6 (feature: Register_Logout)
+psycopg2-binary         # Nếu dùng PostgreSQL
+python-dotenv           # Để quản lý biến môi trường
+Pillow                  # Hỗ trợ xử lý ảnh (cho avatar, v.v.)
+django-crispy-forms     # Tùy chọn: để render form đẹp hơn
+django-allauth          # Tùy chọn: cho social login (Google/Facebook)
+django-chartjs
 python-decouple==3.8
+social-auth-app-django
+django-recaptcha

@@ -37,7 +37,7 @@ class RegisterView(CreateView):
         messages.success(self.request, _('Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.'))
         return super().form_valid(form)
     
-    def form_invalid(self, form):
+    def form_invalid(self, form):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
         messages.error(self.request, _('Có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.'))
         return super().form_invalid(form)
 
@@ -60,14 +60,20 @@ def login_view(request):
             if user is not None:
                 if user.can_login():
                     login(request, user)
+                    
                     if not remember_me:
                         request.session.set_expiry(MIN_SESSION_REMEMBER)
                     else:
                         request.session.set_expiry(MAX_SESSION_REMEMBER)
                     
-                    messages.success(request, _('Chào mừng %(username)s!') % {'username': user.get_name()})
-                    next_url = request.GET.get('next') or settings.LOGIN_REDIRECT_URL
-                    return redirect(next_url)
+                    # messages.success(request, _('Chào mừng %(username)s!') % {'username': user.get_name()})
+                    
+                    # Cấu trúc lại logic chuyển hướng
+                    if user.is_superuser:
+                        return redirect(settings.ADMIN_LOGIN_REDIRECT_URL)
+                    else:
+                        next_url = request.GET.get('next') or settings.LOGIN_REDIRECT_URL
+                        return redirect(next_url)
                 else:
                     if user.is_blocked:
                         messages.error(request, _('Tài khoản của bạn đã bị khóa.'))
@@ -101,10 +107,8 @@ def profile_view(request):
         form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
-            messages.success(request, _('Cập nhật thông tin thành công!'))
-            return redirect('accounts:profile')
-        else:
-            messages.error(request, _('Có lỗi xảy ra. Vui lòng kiểm tra lại.'))
+            #messages.success(request, _('Cập nhật thông tin thành công!'))
+            return redirect(settings.PROFILE_REDIRECT_URL)
     else:
         form = ProfileUpdateForm(instance=profile)
     
