@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+{% block content %}
+  <div id="lesson-detail" data-lesson-id="{{ lesson.id }}">
+    <h1>{{ lesson.title }}</h1>
+    {# embed video như trước #}
+    {% if lesson.video_file %}
+      <video controls class="w-100 mb-3">
+        <source src="{{ lesson.video_file.url }}" type="video/mp4">
+        {% trans "Your browser does not support the video tag." %}
+      </video>
+    {% elif lesson.video_url %}
+      <div class="embed-responsive embed-responsive-16by9 mb-3">
+        <iframe class="embed-responsive-item"
+                src="https://www.youtube.com/embed/{{ lesson.video_url|cut:'https://www.youtube.com/watch?v=' }}"
+                allowfullscreen></iframe>
+      </div>
+    {% endif %}
+    <p>{{ lesson.description }}</p>
+    <a href="{% url 'courses:lesson_list' course_id=lesson.course.id %}" class="btn btn-secondary">
+      {% trans "Back to Lessons" %}
+    </a>
+  </div>
+
+  {# include external JS #}
+  <script src="{% static 'js/lesson_detail.js' %}"></script>
+{% endblock %}

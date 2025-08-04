@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+  <h1>{% trans "Danh sách Khóa học" %}</h1>
+  <ul>
+    {% for c in courses %}
+      <li>
+        <a href="{% url 'courses:lesson_list' course_id=c.id %}">
+          {{ c.name }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
