@@ -1,13 +1,125 @@
 {% extends "base.html" %}
+
+{% load static %}
 {% load i18n %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/profile_styles.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+{% endblock %}
+
 {% block content %}
-<h2>{% trans "Thông tin cá nhân" %}</h2>
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">{% trans "Cập nhật" %}</button>
-</form>
-<p><a href="{% url 'accounts:change_password' %}">{% trans "Đổi mật khẩu" %}</a></p>
-<p><a href="{% url 'accounts:logout' %}">{% trans "Đăng xuất" %}</a></p>
+<div class="login-page-wrapper">
+    <div class="profile-container">
+        <div class="profile-box">
+            <h2>{% trans "Hồ sơ của bạn" %}</h2>
+
+            {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <div class="profile-header">
+                <div class="profile-avatar-container">
+                    <img class="profile-avatar" src="{% if profile.avatar %}{{ profile.avatar.url }}{% else %}{% static 'accounts/img/background.png' %}{% endif %}" alt="Avatar">
+                </div>
+                <h3>{{ user.username }}</h3>
+                <p>{{ profile.display_name|default:user.username }}</p>
+            </div>
+            
+            <form method="post" enctype="multipart/form-data" class="profile-form">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    {{ form.display_name.label_tag }}
+                    {{ form.display_name }}
+                    {% if form.display_name.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.display_name.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.gender.label_tag }}
+                    {{ form.gender }}
+                    {% if form.gender.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.gender.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    {{ form.birthday.label_tag }}
+                    {{ form.birthday }}
+                    {% if form.birthday.errors %}                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+                        <ul class="errorlist">
+                            {% for error in form.birthday.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group form-group-avatar full-width">
+                    <label for="{{ form.avatar.id_for_label }}">{% trans "Ảnh đại diện" %}</label>
+                    <div class="avatar-input-wrapper">
+                        {{ form.avatar }}
+                    </div>
+                    {% if form.avatar.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.avatar.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+
+                <div class="form-group full-width">
+                    {{ form.description.label_tag }}
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.description.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    {{ form.interest.label_tag }}
+                    {{ form.interest }}
+                    {% if form.interest.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.interest.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group checkbox-group full-width">
+                    {{ form.is_locked }}
+                    {{ form.is_locked.label_tag }}
+                </div>
+
+                <button type="submit" class="btn-login">{% trans "Lưu thay đổi" %}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/profile.js' %}"></script>
 {% endblock %}

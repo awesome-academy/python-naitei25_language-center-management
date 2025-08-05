@@ -6,7 +6,8 @@ from django_recaptcha.fields import ReCaptchaField
 from django_recaptcha.widgets import ReCaptchaV2Checkbox
 from constants import (
     MIN_PASSWORD_LENGTH,
-    MIN_TEXTAREA_ROWS
+    MIN_TEXTAREA_ROWS,
+    MAX_AVATAR_SIZE,
 )
 
 
@@ -188,9 +189,34 @@ class ProfileUpdateForm(forms.ModelForm):
             'is_locked',
         ]
         widgets = {
-            'birthday': forms.DateInput(attrs={'type': 'date'}),
-            'description': forms.Textarea(attrs={'rows': MIN_TEXTAREA_ROWS}),
-            'interest': forms.Textarea(attrs={'rows': MIN_TEXTAREA_ROWS}),
+            'display_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Nhập tên hiển thị')
+            }),
+            'gender': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'birthday': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'avatar': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'description': forms.Textarea(attrs={
+                'rows': MIN_TEXTAREA_ROWS,
+                'class': 'form-control',
+                'placeholder': _('Mô tả về bản thân bạn...')
+            }),
+            'interest': forms.Textarea(attrs={
+                'rows': MIN_TEXTAREA_ROWS,
+                'class': 'form-control',
+                'placeholder': _('Những sở thích của bạn...')
+            }),
+            'is_locked': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
         }
         labels = {
             'display_name': _('Tên hiển thị'),
@@ -201,3 +227,30 @@ class ProfileUpdateForm(forms.ModelForm):
             'interest': _('Sở thích'),
             'is_locked': _('Ẩn hồ sơ'),
         }
+        help_texts = {
+            'avatar': _('Chọn ảnh JPG, PNG hoặc GIF (tối đa 5MB)'),
+            'is_locked': _('Nếu được chọn, hồ sơ của bạn sẽ được ẩn khỏi người dùng khác'),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Không hiển thị text "Currently:" cho avatar field
+        if 'avatar' in self.fields:
+            self.fields['avatar'].widget.template_name = 'django/forms/widgets/clearable_file_input.html'
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        # Chỉ validate khi có file mới được upload
+        if avatar and hasattr(avatar, 'content_type') and hasattr(avatar, 'size'):
+            # Kiểm tra kích thước file (5MB)
+            if avatar.size > MAX_AVATAR_SIZE:
+                raise ValidationError(_('Kích thước ảnh không được vượt quá 5MB.'))
+            
+            # Kiểm tra định dạng file bằng cách kiểm tra tên file
+            if hasattr(avatar, 'name'):
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif']
+                file_extension = avatar.name.lower().split('.')[-1] if '.' in avatar.name else ''
+                if f'.{file_extension}' not in allowed_extensions:
+                    raise ValidationError(_('Chỉ chấp nhận file ảnh định dạng JPG, PNG hoặc GIF.'))
+        
+        return avatar

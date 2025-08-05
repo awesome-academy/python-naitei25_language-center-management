@@ -170,8 +170,15 @@ LOGIN_EXEMPT_URLS = [
 
 # Login/Logout URLs
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/accounts/profile/'
 LOGOUT_REDIRECT_URL = '/'
+
+#Admin_site
+ADMIN_LOGIN_REDIRECT_URL = '/custom_admin/dashboard/'
+
+# Profile URLs
+PROFILE_URL = '/accounts/profile/'
+PROFILE_REDIRECT_URL = '/courses/courses_detail/'
 
 # Email configuration (for verification)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
