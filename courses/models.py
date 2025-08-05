@@ -47,3 +47,22 @@ class Lesson(models.Model):
     def __str__(self):
         return f"{self.course.name} – {self.title}"
     
+class UserCourse(models.Model):
+    STATUS_CHOICES = [
+        ('pending', _('Chờ duyệt')),
+        ('approved', _('Đã duyệt')),
+        ('rejected', _('Từ chối')),
+    ]
+
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='registered_courses', verbose_name=_('User'))
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='registered_users', verbose_name=_('Course'))
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name=_('Status'))
+    enrolled_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Registered At'))
+
+    class Meta:
+        verbose_name = _('User Course')
+        verbose_name_plural = _('User Courses')
+        unique_together = (('user', 'course'),)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.course.name} - {self.status}"

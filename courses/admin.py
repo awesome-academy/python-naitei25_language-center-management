@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Course, Lesson
+from .models import Course, Lesson, UserCourse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
@@ -24,3 +24,9 @@ class LessonAdmin(admin.ModelAdmin):
             return format_html('<video width="200" controls src="{}"></video>', obj.video_file.url)
         return "-"
     video_preview.short_description = _("Preview")
+
+@admin.register(UserCourse)
+class UserCourseAdmin(admin.ModelAdmin):
+    list_display = ('user', 'course', 'status', 'enrolled_at')
+    list_filter = ('status', 'course')
+    search_fields = ('user__email', 'course__name')

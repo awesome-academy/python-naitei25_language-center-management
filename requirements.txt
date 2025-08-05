@@ -8,3 +8,4 @@ django-chartjs
 python-decouple==3.8
 social-auth-app-django
 django-recaptcha
+django-nested-admin
