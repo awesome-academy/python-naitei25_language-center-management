@@ -18,8 +18,8 @@ urlpatterns = [
     path('custom-admin/', include('custom_admin.urls')), # URL cho hệ thống quản trị tùy chỉnh
     path('accounts/', include('accounts.urls')), # URL cho ứng dụng accounts
     path('courses/', include('courses.urls', namespace='courses')), # URL cho ứng dụng courses
-    path('quizzes/', include('quizzes.urls')), # URL cho ứng dụng quizzes
-    path('progress/', include('user_progress.urls')), # URL cho ứng dụng user_progress
+    path('quizzes/', include('quizzes.urls', namespace='quizzes')),
+    path('progress/', include('user_progress.urls', namespace='user_progress')), # URL cho ứng dụng user_progress
     path('notifications/', include('notifications.urls')), # URL cho ứng dụng notifications (nếu có views)
     path("", CourseListView.as_view(), name='home'),
     path('oauth/', include('social_django.urls', namespace='social'))

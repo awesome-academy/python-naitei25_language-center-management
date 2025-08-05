@@ -5,9 +5,12 @@ from django.views.generic import (
 )
 from .models import Course, Lesson
 from .forms import LessonForm
+from user_progress.models import LessonProgress
 from django.views.generic import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse, HttpResponseRedirect
+import re
+from django.views.generic import TemplateView
 
 class LessonListView(LoginRequiredMixin, ListView):
     model = Lesson
@@ -21,6 +24,12 @@ class LessonListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data['course'] = self.course
+        completed = (
+            LessonProgress.objects
+            .filter(user=self.request.user, lesson__in=data['lessons'])
+            .values_list('lesson_id', flat=True)
+        )
+        data['completed_lessons'] = set(completed)
         return data
 
 
@@ -71,7 +80,41 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
     template_name = 'courses/lesson_detail.html'
     context_object_name = 'lesson'
 
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        lesson = data['lesson']
+        # Nếu có video_url, extract video_id để tạo embed_url
+        embed_url = ''
+        if lesson.video_url:
+            m = re.search(r'(?:v=|youtu\.be/)([^&]+)', lesson.video_url)
+            vid = m.group(1) if m else ''
+            if vid:
+                embed_url = f'https://www.youtube.com/embed/{vid}'
+        data['embed_url'] = embed_url
+        return data
+
 class CourseListView(LoginRequiredMixin, ListView):
     model = Course
     template_name = 'courses/course_list.html'
     context_object_name = 'courses'
+
+class CourseProgressView(LoginRequiredMixin, TemplateView):
+    template_name = 'courses/course_progress.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        course = get_object_or_404(Course, id=self.kwargs['course_id'])
+        total = course.lessons.count()                   # related_name="lessons"
+        completed = LessonProgress.objects.filter(
+            user=self.request.user,
+            lesson__course=course
+        ).count()
+        percent = int((completed / total) * 100) if total else 0
+
+        ctx.update({
+            'course': course,
+            'total_lessons': total,
+            'completed_lessons': completed,
+            'percent': percent,
+        })
+        return ctx

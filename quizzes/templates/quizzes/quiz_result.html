@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container mt-4" 
+     id="quiz-result"
+     data-passed="{{ passed|yesno:'true,false' }}"
+     data-complete-url="{% url 'user_progress:mark_lesson_complete' lesson_id=quiz.lesson.pk %}"
+     data-csrf-token="{{ csrf_token }}">
+  <h2>{% trans "Quiz Result" %}</h2>
+
+  <p>
+    {% blocktrans with score=score total=quiz.questions.count %}
+      You scored {{ score }}% (out of {{ total }} questions)
+    {% endblocktrans %}
+  </p>
+
+  {% if passed %}
+    <div class="alert alert-success">
+      {% trans "Congratulations! You passed the quiz." %}
+    </div>
+  {% else %}
+    <div class="alert alert-danger">
+      {% blocktrans with pass_rate=quiz.pass_rate %}
+        You did not reach the pass rate of {{ pass_rate }}%. Try again!
+      {% endblocktrans %}
+    </div>
+  {% endif %}
+
+  <a href="{% url 'courses:lesson_detail' pk=quiz.lesson.pk %}"
+     class="btn btn-secondary">
+    &larr; {% trans "Back to Lesson" %}
+  </a>
+</div>
+
+{# include JS riêng biệt #}
+<script src="{% static 'js/quiz_result.js' %}"></script>
+{% endblock %}

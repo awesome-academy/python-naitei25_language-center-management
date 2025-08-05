@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">
+    {% blocktrans with t=quiz.title %}Quiz: {{ t }}{% endblocktrans %}
+  </h2>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="mb-4">
+        <p><strong>{{ field.label }}</strong></p>
+        {{ field }}
+        {% if field.errors %}
+          <div class="text-danger">{{ field.errors }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">
+      {% trans "Submit Quiz" %}
+    </button>
+  </form>
+</div>
+{% endblock %}
