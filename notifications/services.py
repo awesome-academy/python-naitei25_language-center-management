@@ -1,18 +1,19 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import Notification
+from django.utils.translation import gettext as _
 
 
 def create_course_notification(user, course, status):
     if status == 'approved':
-        message = f"Bạn đã được duyệt tham gia khóa học '{course.name}'."
-        subject = f"[Thông báo] Đăng ký khóa học '{course.name}' được duyệt"
+        message = _("Bạn đã được duyệt tham gia khóa học '%(course_name)s'.") % {'course_name': course.name}
+        subject = _("[Thông báo] Đăng ký khóa học '%(course_name)s' được duyệt") % {'course_name': course.name}
     elif status == 'rejected':
-        message = f"Rất tiếc, bạn đã bị từ chối tham gia khóa học '{course.name}'."
-        subject = f"[Thông báo] Đăng ký khóa học '{course.name}' bị từ chối"
+        message = _("Rất tiếc, bạn đã bị từ chối tham gia khóa học '%(course_name)s'.") % {'course_name': course.name}
+        subject = _("[Thông báo] Đăng ký khóa học '%(course_name)s' bị từ chối") % {'course_name': course.name}
     else:
-        message = f"Yêu cầu đăng ký của bạn cho khóa học '{course.name}' đang chờ duyệt."
-        subject = f"[Thông báo] Đã gửi yêu cầu tham gia khóa học '{course.name}'"
+        message = _("Yêu cầu đăng ký của bạn cho khóa học '%(course_name)s' đang chờ duyệt.") % {'course_name': course.name}
+        subject = _("[Thông báo] Đã gửi yêu cầu tham gia khóa học '%(course_name)s'") % {'course_name': course.name}
 
     # Ghi Notification vào hệ thống
     Notification.objects.create(

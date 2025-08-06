@@ -185,18 +185,3 @@ def reset_password_view(request, token):
             return redirect('accounts:login')
     
     return render(request, 'accounts/reset_password.html', {'token': token})
-
-def register_user_to_course(user, course_id):
-    course = Course.objects.get(pk=course_id)
-    
-    # Kiểm tra nếu đã đăng ký rồi
-    if UserCourse.objects.filter(user=user, course=course).exists():
-        return "Đã đăng ký khóa học này."
-
-    # Đăng ký mới
-    UserCourse.objects.create(
-        user=user,
-        course=course,
-        status='pending'
-    )
-    return "Đăng ký thành công! Đang chờ duyệt."

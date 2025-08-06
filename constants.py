@@ -1,5 +1,5 @@
 from enum import Enum
-
+from django.utils.translation import gettext_lazy as _
 
 class UserRole(Enum):
     GUEST = "g"
@@ -42,6 +42,19 @@ class ApprovalStatus(Enum):
     def choices(cls):
         return [(i.value, i.name) for i in cls]
 
+
+class StatusEnum(enum.Enum):
+    PENDING = 'pending'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+
+STATUS_CHOICES = [
+    (StatusEnum.PENDING.value, _('Chờ duyệt')),
+    (StatusEnum.APPROVED.value, _('Đã duyệt')),
+    (StatusEnum.REJECTED.value, _('Từ chối')),
+]
+
+
 COUNT_DEFAULT = 0
 PROGRESS_DEFAULT = 0.0
 
@@ -56,7 +69,7 @@ MAX_IMAGE_URL_LENGTH = 255
 MAX_TITLE_LENGTH = 255
 MAX_TYPE_LENGTH = 255
 MAX_GENDER_LENGTH = 1
-MAX_STATUS_LENGTH = 1
+MAX_STATUS_LENGTH = 20
 MAX_ROLE_LENGTH = 2
 MAX_SESSION_REMEMBER = 1209600
 MAX_RATE = 5
