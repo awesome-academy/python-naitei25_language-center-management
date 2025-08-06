@@ -1,12 +1,10 @@
 from django.urls import path
-from .views import mark_lesson_complete
+from . import views
 
 app_name = 'user_progress'
 
 urlpatterns = [
-    path(
-        'lessons/<int:lesson_id>/complete/',
-        mark_lesson_complete,
-        name='mark_lesson_complete'
-    ),
+    path('lesson/<int:lesson_id>/complete/', 
+         views.mark_lesson_complete, 
+         name='mark_lesson_complete'),
 ]

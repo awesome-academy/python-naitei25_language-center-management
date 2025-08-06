@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">
+    {% blocktrans with name=course.name %}Tiến độ khóa học: {{ name }}{% endblocktrans %}
+  </h2>
+
+  <p>
+    {% blocktrans with comp=completed_lessons total=total_lessons %}
+      Bạn đã hoàn thành {{ comp }} trên tổng số {{ total }} bài học.
+    {% endblocktrans %}
+  </p>
+
+  <div class="progress mb-4">
+    <div id="course-progress-bar"
+         class="progress-bar"
+         role="progressbar"
+         style="width: {{ percent }}%;"
+         aria-valuenow="{{ percent }}"
+         aria-valuemin="0"
+         aria-valuemax="100">
+      {{ percent }}%
+    </div>
+  </div>
+
+  <a href="{% url 'courses:lesson_list' course_id=course.id %}"
+     class="btn btn-primary">
+    {% trans "Tiếp tục học" %}
+  </a>
+</div>
+
+{# Tách riêng JS, nếu bạn vẫn muốn cập nhật động sau này #}
+<script src="{% static 'js/course_progress.js' %}"></script>
+{% endblock %}

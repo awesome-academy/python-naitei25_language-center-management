@@ -4,6 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from courses.models import Lesson
 from .models import LessonProgress
+from django.views.generic import TemplateView
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 @login_required
 @require_POST
@@ -26,3 +29,31 @@ def mark_lesson_complete(request, lesson_id):
         defaults={'snapshot': snapshot}
     )
     return JsonResponse({'success': True, 'created': created})
+
+class CourseProgressView(LoginRequiredMixin, TemplateView):
+    """
+    Hiển thị tiến độ: số bài học đã hoàn thành / tổng số, kèm progress bar.
+    """
+    template_name = 'courses/course_progress.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Lấy course
+        course = get_object_or_404(Course, id=self.kwargs['course_id'])
+        # Tổng số bài học
+        total = course.lesson_set.count()
+        # Số bài đã hoàn thành của user
+        completed = LessonProgress.objects.filter(
+            user=self.request.user,
+            lesson__course=course
+        ).count()
+        # Tỉ lệ % (integer)
+        percent = int((completed / total) * 100) if total else 0
+
+        context.update({
+            'course': course,
+            'total_lessons': total,
+            'completed_lessons': completed,
+            'percent': percent,
+        })
+        return context
