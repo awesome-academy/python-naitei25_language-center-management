@@ -1,38 +1,38 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load i18n %}
+{% load quiz_tags %}
 
 {% block content %}
-<div class="container mt-4" 
-     id="quiz-result"
-     data-passed="{{ passed|yesno:'true,false' }}"
-     data-complete-url="{% url 'user_progress:mark_lesson_complete' lesson_id=quiz.lesson.pk %}"
-     data-csrf-token="{{ csrf_token }}">
-  <h2>{% trans "Quiz Result" %}</h2>
 
-  <p>
-    {% blocktrans with score=score total=quiz.questions.count %}
-      You scored {{ score }}% (out of {{ total }} questions)
-    {% endblocktrans %}
-  </p>
+<h2>{% blocktrans %}Kết quả: {{ quiz.title }}{% endblocktrans %}</h2>
+<p>{% trans "Điểm" %}: {{ score }}%</p>
+<p>{% trans "Trạng thái" %}:
+    {% if passed %}
+        <span style="color:green;">{% trans "Đỗ" %}</span>
+    {% else %}
+        <span style="color:red;">{% trans "Trượt" %}</span>
+    {% endif %}
+</p>
+<hr>
 
-  {% if passed %}
-    <div class="alert alert-success">
-      {% trans "Congratulations! You passed the quiz." %}
+{% for result in results %}
+    <div style="margin-bottom: 20px;">
+        <strong>{% blocktrans %}Câu hỏi: {{ result.question.text }}{% endblocktrans %}</strong>
+        <ul>
+            {% for choice in result.question.choices.all %}
+                <li style="{% choice_style choice result.correct_choice result.selected %}">
+                    {{ choice.text }} {% choice_icon choice result.correct_choice result.selected result.is_correct %}
+                </li>
+            {% endfor %}
+        </ul>
     </div>
-  {% else %}
-    <div class="alert alert-danger">
-      {% blocktrans with pass_rate=quiz.pass_rate %}
-        You did not reach the pass rate of {{ pass_rate }}%. Try again!
-      {% endblocktrans %}
-    </div>
-  {% endif %}
+    <hr>
+{% endfor %}
 
-  <a href="{% url 'courses:lesson_detail' pk=quiz.lesson.pk %}"
-     class="btn btn-secondary">
-    &larr; {% trans "Back to Lesson" %}
-  </a>
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{% url 'courses:lesson_list' course_id %}" class="btn btn-primary">
+        ⬅️ {% trans "Quay lại bài học của khoá học" %}
+    </a>
 </div>
 
-{# include JS riêng biệt #}
-<script src="{% static 'js/quiz_result.js' %}"></script>
 {% endblock %}
