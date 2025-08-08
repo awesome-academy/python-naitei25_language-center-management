@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% load static %}
+{% load i18n %}
 {% block content %}
 
 <h2>{{ quiz.title }}</h2>
@@ -6,11 +8,11 @@
 <form method="post">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Nộp bài</button>
+  <button type="submit">{% trans "Nộp bài" %}</button>
 </form>
 
-<div id="timer" style="font-weight:bold; color:red; margin-top: 10px;">
-  Thời gian còn lại:
+<div id="timer">
+  {% trans "Thời gian còn lại" %}:
   <span id="time">
     {% with quiz.time_limit|default:3 as minutes %}
       {{ minutes|add:0 }}:00
@@ -18,26 +20,9 @@
   </span>
 </div>
 
+<script src="{% static 'quizzes/js/quiz_timer.js' %}"></script>
 <script>
-  // Lấy giá trị thời gian từ Django
-  let duration = {{ quiz.time_limit|default:"3"|add:0 }} * 60;
-  let display = document.getElementById('time');
-
-  let timer = setInterval(function () {
-      let minutes = parseInt(duration / 60, 10);
-      let seconds = parseInt(duration % 60, 10);
-
-      minutes = minutes < 10 ? "0" + minutes : minutes;
-      seconds = seconds < 10 ? "0" + seconds : seconds;
-
-      display.textContent = minutes + ":" + seconds;
-
-      if (--duration < 0) {
-          clearInterval(timer);
-          alert("Hết thời gian! Bài sẽ được nộp.");
-          document.querySelector("form").submit();  // Tự động nộp
-      }
-  }, 1000);
+    startQuizTimer({{ quiz.time_limit|default:"3"|add:0 }});
 </script>
 
 {% endblock %}

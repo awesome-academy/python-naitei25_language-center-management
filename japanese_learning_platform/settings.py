@@ -88,7 +88,6 @@ WSGI_APPLICATION = "japanese_learning_platform.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -141,8 +140,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_URL = '/static/'
+
+# Nơi Django sẽ lưu file static khi chạy collectstatic (production)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Thư mục chứa static chung cho toàn project (ngoài static của các app)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Media files (upload của người dùng)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -188,10 +199,6 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = 'no-reply@test.dev'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-
-# Media files (for avatar upload)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Google OAuth settings
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')

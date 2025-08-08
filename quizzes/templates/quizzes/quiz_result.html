@@ -1,42 +1,37 @@
 {% extends "base.html" %}
+{% load i18n %}
+{% load quiz_tags %}
+
 {% block content %}
-<h2>Kết quả: {{ quiz.title }}</h2>
-<p>Điểm: {{ score }}%</p>
-<p>Trạng thái:
+
+<h2>{% blocktrans %}Kết quả: {{ quiz.title }}{% endblocktrans %}</h2>
+<p>{% trans "Điểm" %}: {{ score }}%</p>
+<p>{% trans "Trạng thái" %}:
     {% if passed %}
-        <span style="color:green;">Đỗ</span>
+        <span style="color:green;">{% trans "Đỗ" %}</span>
     {% else %}
-        <span style="color:red;">Trượt</span>
+        <span style="color:red;">{% trans "Trượt" %}</span>
     {% endif %}
 </p>
 <hr>
 
 {% for result in results %}
     <div style="margin-bottom: 20px;">
-        <strong>Câu hỏi: {{ result.question.text }}</strong>
+        <strong>{% blocktrans %}Câu hỏi: {{ result.question.text }}{% endblocktrans %}</strong>
         <ul>
             {% for choice in result.question.choices.all %}
-                <li
-                    {% if choice == result.correct_choice %}
-                        style="color:green;"
-                    {% elif choice == result.selected %}
-                        style="color:red;"
-                    {% endif %}
-                >
-                    {{ choice.text }}
-                    {% if choice == result.correct_choice %} ✅{% endif %}
-                    {% if choice == result.selected and not result.is_correct %} ❌{% endif %}
+                <li style="{% choice_style choice result.correct_choice result.selected %}">
+                    {{ choice.text }} {% choice_icon choice result.correct_choice result.selected result.is_correct %}
                 </li>
             {% endfor %}
         </ul>
-        <p>Bạn đã chọn: <strong>{{ result.selected.text }}</strong></p>
     </div>
     <hr>
 {% endfor %}
 
 <div style="text-align: center; margin-top: 30px;">
     <a href="{% url 'courses:lesson_list' course_id %}" class="btn btn-primary">
-        ⬅️ Quay lại bài học của khoá học
+        ⬅️ {% trans "Quay lại bài học của khoá học" %}
     </a>
 </div>
 
