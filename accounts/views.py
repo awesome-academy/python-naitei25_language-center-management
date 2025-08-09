@@ -10,6 +10,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
+from courses.models import Course, UserCourse
 import uuid
 
 from .models import User
