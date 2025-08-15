@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Trang chủ — {{ C.SITE.NAME }}{% endblock %}
+{% block content %}
+
+<!-- Hero -->
+<section class="py-5">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <h1 class="display-5 fw-bold">{{ C.HOMEPAGE.HERO_TITLE }}</h1>
+      <p class="lead text-muted">{{ C.HOMEPAGE.HERO_SUBTITLE }}</p>
+      <a class="btn btn-teal btn-lg" href="{% url C.HOMEPAGE.HERO_CTA_URL_NAME %}">
+        {{ C.HOMEPAGE.HERO_CTA_TEXT }}
+      </a>
+    </div>
+    <div class="col-lg-5 text-center">
+      <img class="img-fluid rounded-4 shadow" src="{% static 'img/placeholders/hero.jpg' %}" alt="hero">
+    </div>
+  </div>
+</section>
+
+<!-- Tin tức -->
+<section class="py-4 bg-light rounded-4">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end mb-3">
+      <h2 class="h4 mb-0">Tin tức và sự kiện đào tạo</h2>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'news:list' %}">Xem thêm</a>
+    </div>
+
+    <div class="row g-3">
+      {% for news in news_list %}
+        <div class="col-md-6 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <img src="{{ news.cover_url }}" class="card-img-top" alt="">
+            <div class="card-body">
+              <h3 class="card-title h6 text-truncate-2">{{ news.title }}</h3>
+              <p class="text-muted small mb-2"><i class="bi bi-clock"></i> {{ news.published_at|date:"d/m/Y" }}</p>
+              <a class="stretched-link" href="{% url 'news:detail' news.slug %}"> </a>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12"><p class="text-muted">Chưa có tin tức.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}

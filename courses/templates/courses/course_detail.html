@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% firstof course.title course.name 'Khóa học' %} — {{ C.SITE.NAME }}{% endblock %}
+
+{% block content %}
+{# Placeholder ảnh bìa tĩnh #}
+{% static 'img/course_img.jpg' as course_placeholder %}
+
+<div class="row g-4">
+  <!-- Left: nội dung khóa học -->
+  <div class="col-lg-8">
+    <h1 class="h3 mb-1">{% firstof course.title course.name 'Khóa học' %}</h1>
+
+    <div class="text-muted small mb-3">
+      <i class="bi bi-person-circle"></i> {{ course.author_name|default:"" }}
+      <span class="ms-2"><i class="bi bi-people"></i> {{ course.students_count|default:0 }} học viên</span>
+    </div>
+
+    <ul class="nav nav-tabs mt-2" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabIntro" type="button">Giới thiệu</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabContent" type="button">Nội dung</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTeacher" type="button">Giảng viên</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReviews" type="button">Đánh giá</button></li>
+    </ul>
+
+    <div class="tab-content border border-top-0 rounded-bottom p-3">
+      <div class="tab-pane fade show active" id="tabIntro">
+        {{ course.description|default:""|safe }}
+      </div>
+
+      <div class="tab-pane fade" id="tabContent">
+        <ol class="list-group list-group-numbered">
+          {% for lesson in lessons %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>
+                {% if lesson.order %}{{ lesson.order }}.{% endif %}
+                {{ lesson.title }}
+              </span>
+
+              {# Tạo URL xem bài: ưu tiên route có slug nếu có slug #}
+              {% if course.slug %}
+                {% url 'courses:lesson' course.slug lesson.pk as lesson_url %}
+              {% endif %}
+              <a class="btn btn-sm btn-outline-teal" href="{% firstof lesson_url '#' %}">Xem bài</a>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-muted">Chưa có bài học.</li>
+          {% endfor %}
+        </ol>
+      </div>
+
+      <div class="tab-pane fade" id="tabTeacher">
+        {{ course.teacher_bio|default:""|safe }}
+      </div>
+
+      <div class="tab-pane fade" id="tabReviews">
+        <!-- TODO: hiển thị review -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: card đăng ký/ảnh bìa -->
+  <div class="col-lg-4">
+    <div class="card sticky-top" style="top: 80px;">
+      <div class="ratio ratio-16x9">
+        {% if course.cover %}
+          <img
+            src="{{ course.cover.url }}"
+            class="card-img-top object-fit-cover"
+            alt="{% firstof course.title course.name 'Course cover' %}"
+            loading="lazy">
+        {% elif course.cover_url %}
+          {% if course.cover_url|slice:":4" == "http" %}
+            <img src="{{ course.cover_url }}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+          {% else %}
+            <img src="{% static course.cover_url %}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+          {% endif %}
+        {% else %}
+          <img src="{{ course_placeholder }}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        <ul class="list-unstyled small text-muted mb-3">
+          <li><i class="bi bi-clock"></i> Thời lượng: {{ course.duration_text|default:"—" }}</li>
+          <li><i class="bi bi-collection"></i> {{ lessons|length }} Bài học</li>
+          <li><i class="bi bi-display"></i> Học trên: Mobile, TV, PC</li>
+        </ul>
+
+        {# URL vào học/đăng ký: chỉ build khi có slug để tránh NoReverseMatch #}
+        {% if course.slug %}
+          {% url 'courses:start' course.slug as start_url %}
+          {% url 'courses:enroll' course.slug as enroll_url %}
+        {% endif %}
+
+        {% if user_is_enrolled %}
+          <a class="btn btn-teal w-100" href="{% firstof start_url '#' %}">Vào học</a>
+        {% else %}
+          <form method="post" action="{% firstof enroll_url '#' %}">
+            {% csrf_token %}
+            <button class="btn btn-teal w-100">
+              {{ C.COURSE_CARD.ENROLL_BUTTON_TEXT|default:"Đăng ký học" }}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% load static %}
+<nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background:#003399">  <div class="container">
+    <a class="navbar-brand d-flex align-items-center" href="{% url 'home' %}">
+      <img src="{% static '/img/logo.png' %}" alt="{{ C.SITE.NAME }} logo" class="me-2" style="height:28px;">
+      <span>{{ C.SITE.NAME }}</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <!-- Left: main nav -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% for item in C.NAV %}
+          {% with '' as nav_url %}
+            {% if item.url_name %}{% url item.url_name as nav_url %}{% endif %}
+            <li class="nav-item">
+              <a
+                class="nav-link{% if request.resolver_match and request.resolver_match.view_name == item.url_name %} active{% elif request.resolver_match and request.resolver_match.url_name == item.url_name %} active{% endif %}"
+                href="{% firstof nav_url item.url '#' %}"
+              >
+                {{ item.name }}
+              </a>
+            </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+
+      <!-- Right: user -->
+      <ul class="navbar-nav ms-auto">
+        {% if request.user.is_authenticated %}
+          {% url 'accounts:profile' as profile_url %}
+          {% url 'accounts:change_password' as change_password_url %}
+          {% url 'accounts:logout' as logout_url %}
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle fs-5 me-1"></i>
+              <span class="d-none d-lg-inline">{{ request.user.get_short_name|default:request.user.username }}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% firstof profile_url '#' %}">Thông tin cá nhân</a></li>
+              <li><a class="dropdown-item" href="{% firstof change_password_url '#' %}">Đổi mật khẩu</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                {% if logout_url %}
+                  <form method="post" action="{{ logout_url }}">
+                    {% csrf_token %}
+                    <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
+                  </form>
+                {% else %}
+                  <a class="dropdown-item text-danger" href="#">Đăng xuất</a>
+                {% endif %}
+              </li>
+            </ul>
+          </li>
+        {% else %}
+          {% url 'accounts:login' as login_url %}
+          <li class="nav-item">
+            <a class="btn btn-light btn-sm" href="{% firstof login_url '#' %}">Đăng nhập</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

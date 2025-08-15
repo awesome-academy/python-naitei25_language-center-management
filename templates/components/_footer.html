@@ -1,0 +1,10 @@
+<footer class="mt-auto bg-light border-top">
+  <div class="container py-4 d-flex flex-column flex-md-row justify-content-between align-items-center">
+    <div class="text-muted small">{{ C.FOOTER.COPYRIGHT }}</div>
+    <ul class="nav">
+      {% for link in C.FOOTER.LINKS %}
+        <li class="nav-item"><a class="nav-link px-2 small" href="{{ link.url }}">{{ link.label }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</footer>

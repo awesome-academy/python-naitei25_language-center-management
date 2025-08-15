@@ -12,6 +12,7 @@ from constants import (
     MIN_PASSWORD_LENGTH,
     SESSION_COOKIE_AGE_SECONDS
 )
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,6 +82,13 @@ TEMPLATES = [
         },
     },
 ]
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
+
+TEMPLATES[0]["OPTIONS"]["context_processors"] += [
+    "core.context_processors.constants_context",
+]
 
 WSGI_APPLICATION = "japanese_learning_platform.wsgi.application"
 
@@ -140,17 +148,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = '/static/'
 
-# Nơi Django sẽ lưu file static khi chạy collectstatic (production)
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Thư mục chứa static chung cho toàn project (ngoài static của các app)
+STATIC_URL = "static/"
+# STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / "static",   # thư mục static ở cùng cấp manage.py
 ]
 
-# Media files (upload của người dùng)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
