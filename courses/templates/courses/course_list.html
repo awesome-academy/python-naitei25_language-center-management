@@ -1,37 +1,35 @@
-{% extends 'base.html' %}
-{% load i18n static %}
-
-{% block head %}
-  {# nếu base.html có block để thêm CSS riêng #}
-  <link rel="stylesheet" href="{% static 'css/course_list.css' %}">
-{% endblock head %}
-
+{% extends "base.html" %}
+{% block title %}Danh sách khóa học — {{ C.SITE.NAME }}{% endblock %}
 {% block content %}
-<div class="container mt-5">
-  <h1 class="mb-4">{% trans "Danh sách Khóa học" %}</h1>
-  <div class="row">
-    {% for course in courses %}
-      <div class="col-sm-6 col-md-4 mb-4">
-        <div class="card h-100 shadow-sm">
-          <img 
-            src="{% if course.thumbnail %}{{ course.thumbnail.url }}{% else %}{% static 'images/course_placeholder.jpg' %}{% endif %}"
-            class="card-img-top" 
-            alt="{% blocktrans %}Hình ảnh khóa học {{ course.name }}{% endblocktrans %}">
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title">{{ course.name }}</h5>
-            <p class="card-text">{{ course.description|truncatewords:20 }}</p>
-            <a href="{% url 'courses:lesson_list' course_id=course.id %}" 
-               class="btn btn-primary mt-auto">
-              {% trans "Xem bài học" %}
-            </a>
-          </div>
-        </div>
-      </div>
-    {% empty %}
-      <div class="col-12">
-        <p class="text-muted">{% trans "Hiện tại chưa có khóa học nào." %}</p>
-      </div>
-    {% endfor %}
-  </div>
+{% load static %}
+<div class="d-flex align-items-end justify-content-between mb-3">
+  <h1 class="h3 mb-0">KHÓA HỌC NỔI BẬT</h1>
+  <form class="d-flex gap-2" method="get">
+    <input class="form-control form-control-sm" name="q" value="{{ request.GET.q }}" placeholder="Tìm khóa học..." />
+    <select class="form-select form-select-sm" name="sort">
+      <option value="">Sắp xếp</option>
+      <option value="popular" {% if request.GET.sort == 'popular' %}selected{% endif %}>Phổ biến</option>
+      <option value="new" {% if request.GET.sort == 'new' %}selected{% endif %}>Mới nhất</option>
+      <option value="rating" {% if request.GET.sort == 'rating' %}selected{% endif %}>Đánh giá cao</option>
+    </select>
+    <button class="btn btn-outline-secondary btn-sm">Lọc</button>
+  </form>
 </div>
-{% endblock content %}
+
+<div class="row g-3">
+  {% for course in page_obj.object_list %}
+    <div class="col-12 col-sm-6 col-lg-3">
+      {% include "courses/_course_card.html" with course=course %}
+    </div>
+  {% empty %}
+    <div class="col-12"><p class="text-muted">Không tìm thấy khóa học.</p></div>
+  {% endfor %}
+</div>
+
+<div class="mt-4">
+  {% include "components/_pagination.html" %}
+</div>
+{% endblock %}
+{% block extra_js %}
+  <script src="{% static 'courses/js/course_list.js' %}"></script>
+{% endblock %}

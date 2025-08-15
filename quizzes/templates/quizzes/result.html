@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Kết quả — {{ quiz.title }}{% endblock %}
+{% block content %}
+<div class="text-center mb-4">
+  {% if passed %}
+    <div class="alert alert-success">{{ C.QUIZ.PASS_BADGE_TEXT }}</div>
+  {% else %}
+    <div class="alert alert-warning">{{ C.QUIZ.FAIL_BADGE_TEXT }}</div>
+  {% endif %}
+  <p class="lead">Điểm: <strong>{{ score }}%</strong> • Yêu cầu qua: {{ quiz.pass_rate }}%</p>
+</div>
+
+{% if C.QUIZ.SHOW_REVIEW_AFTER_SUBMIT %}
+  <div class="accordion" id="reviewAcc">
+    {% for r in review %}
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#rv{{ forloop.counter }}">
+            Câu {{ forloop.counter }}: {{ r.question }}
+          </button>
+        </h2>
+        <div id="rv{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#reviewAcc">
+          <div class="accordion-body">
+            <p class="mb-1"><span class="badge {% if r.is_correct %}bg-success{% else %}bg-danger{% endif %}">
+              {% if r.is_correct %}Đúng{% else %}Sai{% endif %}
+            </span></p>
+            <p class="mb-1"><strong>Đáp án của bạn:</strong> {{ r.user_choice }}</p>
+            <p class="mb-0"><strong>Đáp án đúng:</strong> {{ r.correct_choice }}</p>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="mt-4 text-center">
+  <a class="btn btn-outline-teal" href="{% url 'courses:lesson' quiz.lesson.course.slug quiz.lesson.id %}">Quay lại bài học</a>
+</div>
+{% endblock %}
