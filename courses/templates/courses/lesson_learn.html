@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% load youtube %}
+
+{% block content %}
+<div class="row g-3">
+
+  {# ========================= SIDEBAR / PLAYLIST ========================= #}
+  <div class="col-lg-3">
+    <div class="card sticky-top" style="top:70px">
+      <div class="card-header">
+        <strong>{{ object.course.name }}</strong>
+        <div class="small text-muted">Tìm kiếm bài</div>
+        <input id="lessonSearch" class="form-control form-control-sm" placeholder="Nhập tên bài học hoặc 'bài tập'">
+      </div>
+
+      {# Mỗi BÀI = 1 accordion-item, title lấy từ CHÍNH lesson video #}
+      <div class="accordion" id="playlistAccordion">
+        {% for l in siblings %}
+          {% if l.kind != "QUIZ" %}
+            {% with aid="mod"|add:forloop.counter|stringformat:"s" %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="{{ aid }}-h">
+                <button class="accordion-button {% if l.id != object.id %}collapsed{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#{{ aid }}-c"
+                        aria-expanded="{% if l.id == object.id %}true{% else %}false{% endif %}"
+                        aria-controls="{{ aid }}-c">
+                  {{ l.title }}
+                </button>
+              </h2>
+
+              <div id="{{ aid }}-c"
+                   class="accordion-collapse collapse {% if l.id == object.id %}show{% endif %}"
+                   aria-labelledby="{{ aid }}-h"
+                   data-bs-parent="#playlistAccordion">
+
+                <ul class="list-group list-group-flush module-list">
+
+                  {# 1) VIDEO BÀI GIẢNG cho bài này #}
+                  {% if l.course.slug %}
+                    {% url 'courses:lesson' l.course.slug l.id as l_url %}
+                  {% else %}
+                    {% url 'courses:lesson_by_id' l.course.id l.id as l_url %}
+                  {% endif %}
+                  <li class="list-group-item {% if l.id == object.id %}active{% endif %}">
+                    <a class="d-flex justify-content-between align-items-center text-decoration-none row-link"
+                       href="{{ l_url }}">
+                      <span><i class="bi bi-play-circle me-2"></i> Video bài giảng</span>
+                      {% if l.duration_seconds %}<span class="small text-muted">{{ l.get_duration_text }}</span>{% endif %}
+                    </a>
+                  </li>
+
+                  {# 2) BÀI TẬP KIỂM TRA của bài này (OneToOne: l.quiz). Nếu chưa có thì hiện dòng khoá #}
+                  {% if l.quiz %}
+                    {% if l.course.slug %}
+                      {% url 'courses:quiz_start' l.course.slug l.id as q_url %}
+                    {% else %}
+                      {% url 'courses:quiz_start_by_id' l.course.id l.id as q_url %}
+                    {% endif %}
+                    <li class="list-group-item">
+                      <a class="d-flex justify-content-between align-items-center text-decoration-none row-link"
+                         href="{{ q_url }}">
+                        <span><i class="bi bi-question-circle me-2"></i> Bài tập kiểm tra</span>
+                      </a>
+                    </li>
+                  {% else %}
+                    <li class="list-group-item">
+                      <span class="d-flex justify-content-between align-items-center text-muted">
+                        <span><i class="bi bi-lock-fill me-2"></i> Bài tập kiểm tra</span>
+                        <span class="small">Chưa có</span>
+                      </span>
+                    </li>
+                  {% endif %}
+                </ul>
+              </div>
+            </div>
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {# ======================= /SIDEBAR / PLAYLIST ======================= #}
+
+  {# ============================== MAIN CONTENT ============================== #}
+  <div class="col-lg-9">
+    <h4 class="mb-2">{{ object.title }}</h4>
+
+    {# Video: ưu tiên youtube embed, sau đó file upload #}
+    {% if embed_url %}
+      <div class="ratio ratio-16x9 mb-3">
+        <iframe src="{{ embed_url }}" title="YouTube video" allowfullscreen></iframe>
+      </div>
+    {% elif object.video_file %}
+      <video class="w-100 rounded mb-3" controls preload="metadata">
+        <source src="{{ object.video_file.url }}">
+        Trình duyệt của bạn không hỗ trợ video.
+      </video>
+    {% else %}
+      <div class="alert alert-warning">
+        Bài này chưa có video (chưa khai báo <code>video_url</code> hoặc <code>video_file</code>).
+      </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between bg-dark text-white rounded p-2 mt-3">
+      {# Quay về trang khóa học #}
+      {% if object.course.slug %}
+        {% url 'courses:detail' object.course.slug as back_url %}
+      {% else %}
+        {% url 'courses:detail_by_id' object.course.id as back_url %}
+      {% endif %}
+      <a class="text-white text-decoration-none" href="{{ back_url }}">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Khóa học
+      </a>
+
+      {# Điều hướng bài trước / bài sau #}
+      <div class="d-flex gap-2">
+        {% if prev_lesson %}
+          {% if prev_lesson.kind == "QUIZ" %}
+            {% if prev_lesson.course.slug %}
+              {% url 'courses:quiz_start' prev_lesson.course.slug prev_lesson.id as prev_url %}
+            {% else %}
+              {% url 'courses:quiz_start_by_id' prev_lesson.course.id prev_lesson.id as prev_url %}
+            {% endif %}
+          {% else %}
+            {% if prev_lesson.course.slug %}
+              {% url 'courses:lesson' prev_lesson.course.slug prev_lesson.id as prev_url %}
+            {% else %}
+              {% url 'courses:lesson_by_id' prev_lesson.course.id prev_lesson.id as prev_url %}
+            {% endif %}
+          {% endif %}
+          <a class="btn btn-secondary btn-sm" href="{{ prev_url }}">‹ Bài trước</a>
+        {% endif %}
+
+        {% if next_lesson %}
+          {% if next_lesson.kind == "QUIZ" %}
+            {% if next_lesson.course.slug %}
+              {% url 'courses:quiz_start' next_lesson.course.slug next_lesson.id as next_url %}
+            {% else %}
+              {% url 'courses:quiz_start_by_id' next_lesson.course.id next_lesson.id as next_url %}
+            {% endif %}
+          {% else %}
+            {% if next_lesson.course.slug %}
+              {% url 'courses:lesson' next_lesson.course.slug next_lesson.id as next_url %}
+            {% else %}
+              {% url 'courses:lesson_by_id' next_lesson.course.id next_lesson.id as next_url %}
+            {% endif %}
+          {% endif %}
+          <a class="btn btn-primary btn-sm" href="{{ next_url }}">Bài sau ›</a>
+        {% endif %}
+      </div>
+
+      <a class="text-white text-decoration-none" href="#playlistAccordion">
+        <i class="bi bi-grid-3x3-gap me-1"></i>Bài học & tài liệu
+      </a>
+    </div>
+  </div>
+  {# ============================ /MAIN CONTENT ============================ #}
+</div>
+
+<script>
+  // --- Lọc nhanh theo tiêu đề bài/video/quiz ---
+  const searchInput = document.getElementById('lessonSearch');
+  const items = document.querySelectorAll('#playlistAccordion .accordion-item');
+
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      items.forEach(item => {
+        const headerText = item.querySelector('.accordion-button')?.textContent.toLowerCase() || '';
+        const rows = item.querySelectorAll('.module-list .list-group-item');
+        let anyMatch = headerText.includes(q);
+        rows.forEach(r => {
+          const t = r.textContent.toLowerCase();
+          const show = !q || t.includes(q) || headerText.includes(q);
+          r.style.display = show ? '' : 'none';
+          if (show) anyMatch = true;
+        });
+        item.style.display = anyMatch ? '' : 'none';
+      });
+    });
+  }
+
+  // --- Accordion thủ công: luôn chỉ mở đúng 1 panel ---
+  const buttons = document.querySelectorAll('#playlistAccordion .accordion-button');
+
+  function closeAllExcept(targetCollapse) {
+    // đóng tất cả panel khác và cập nhật nút
+    document.querySelectorAll('#playlistAccordion .accordion-collapse').forEach(c => {
+      if (c !== targetCollapse) c.classList.remove('show');
+    });
+    buttons.forEach(b => {
+      const sel = b.getAttribute('data-bs-target');
+      const el  = sel ? document.querySelector(sel) : null;
+      const expanded = el && el.classList.contains('show');
+      b.classList.toggle('collapsed', !expanded);
+      b.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); // tránh để Bootstrap can thiệp
+      const sel = btn.getAttribute('data-bs-target');
+      const panel = document.querySelector(sel);
+      const willOpen = !(panel.classList.contains('show'));
+
+      // đóng tất cả trước
+      document.querySelectorAll('#playlistAccordion .accordion-collapse').forEach(c => c.classList.remove('show'));
+
+      // nếu panel vừa bấm sẽ mở -> mở nó
+      if (willOpen) panel.classList.add('show');
+
+      // cập nhật trạng thái nút
+      closeAllExcept(panel);
+    });
+  });
+
+  // Đồng bộ trạng thái nút khi load trang (đảm bảo chỉ panel của bài hiện tại mở)
+  (function initAccordionState() {
+    const shown = document.querySelector('#playlistAccordion .accordion-collapse.show');
+    closeAllExcept(shown || null);
+  })();
+</script>
+
+{% endblock %}

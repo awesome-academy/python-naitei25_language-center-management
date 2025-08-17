@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div class="mx-auto" style="max-width: 900px;">
+
+    <!-- Đầu bài -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <div>
+        {% if quiz.lesson.course.slug %}
+          {% url 'courses:detail' quiz.lesson.course.slug as back_url %}
+        {% else %}
+          {% url 'courses:detail_by_id' quiz.lesson.course.id as back_url %}
+        {% endif %}
+        <a class="text-decoration-none" href="{{ back_url }}">
+          <i class="bi bi-arrow-left me-1"></i>Khóa học
+        </a>
+        <h1 class="h4 my-1">{{ quiz.title }}</h1>
+        <div class="text-muted">
+          <i class="bi bi-list-ul"></i> {{ questions|length }} câu ·
+          <i class="bi bi-alarm"></i> {{ quiz.time_minutes }} phút
+          {% if quiz.pass_rate %} · <i class="bi bi-clipboard-check"></i> Đạt: {{ quiz.pass_rate }}%{% endif %}
+        </div>
+      </div>
+
+      <!-- Đồng hồ -->
+      <div class="text-end">
+        <div class="small text-muted">Thời gian còn lại</div>
+        <div id="countdown" class="fs-4 fw-bold">--:--</div>
+      </div>
+    </div>
+
+    <!-- Form làm bài -->
+    <form method="post">
+      {% csrf_token %}
+
+      {% for q in questions %}
+        <div class="mb-4">
+          <div class="fw-semibold mb-2">Câu {{ forloop.counter }} :</div>
+          <div class="mb-2">{{ q.text }}</div>
+
+          {% for ch in q.choices.all %}
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio"
+                     name="q{{ q.id }}" id="q{{ q.id }}_{{ forloop.counter }}"
+                     value="{{ ch.id }}">
+              <label class="form-check-label" for="q{{ q.id }}_{{ forloop.counter }}">
+                {{ ch.text }}
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-send me-1"></i>Nộp bài
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  // end_at được view truyền xuống: milliseconds (unix ms)
+  const endAtMs = {{ end_at|default:0 }};
+  if (!endAtMs) return;
+
+  const el = document.getElementById('countdown');
+
+  function pad(n){ return n < 10 ? '0' + n : n; }
+
+  function tick() {
+    const now = Date.now();
+    let sec = Math.max(0, Math.floor((endAtMs - now) / 1000));
+
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    el.textContent = pad(m) + ':' + pad(s);
+
+    if (sec <= 0) {
+      // tự động nộp bài khi hết giờ
+      const form = document.querySelector('form[method="post"]');
+      if (form) form.submit();
+      return;
+    }
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
+{% endblock %}

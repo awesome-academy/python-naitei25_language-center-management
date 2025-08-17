@@ -4,7 +4,6 @@
 {% block title %}{% firstof course.title course.name 'Khóa học' %} — {{ C.SITE.NAME }}{% endblock %}
 
 {% block content %}
-{# Placeholder ảnh bìa tĩnh #}
 {% static 'img/course_img.jpg' as course_placeholder %}
 
 <div class="row g-4">
@@ -29,26 +28,89 @@
         {{ course.description|default:""|safe }}
       </div>
 
+      {# ======================= NỘI DUNG KHÓA HỌC ======================= #}
       <div class="tab-pane fade" id="tabContent">
-        <ol class="list-group list-group-numbered">
-          {% for lesson in lessons %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <span>
-                {% if lesson.order %}{{ lesson.order }}.{% endif %}
-                {{ lesson.title }}
-              </span>
+        {% with can_access=user_is_enrolled %}
+          {% regroup lessons by section as section_groups %}
 
-              {# Tạo URL xem bài: ưu tiên route có slug nếu có slug #}
-              {% if course.slug %}
-                {% url 'courses:lesson' course.slug lesson.pk as lesson_url %}
-              {% endif %}
-              <a class="btn btn-sm btn-outline-teal" href="{% firstof lesson_url '#' %}">Xem bài</a>
-            </li>
-          {% empty %}
-            <li class="list-group-item text-muted">Chưa có bài học.</li>
-          {% endfor %}
-        </ol>
+          <div class="accordion" id="courseAccordion">
+            {% for grp in section_groups %}
+              {% with sec=grp.grouper sec_id="sec"|add:forloop.counter|stringformat:"s" %}
+              <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="{{ sec_id }}-header">
+                  <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#{{ sec_id }}-collapse"
+                          aria-expanded="{{ forloop.first|yesno:'true,false' }}"
+                          aria-controls="{{ sec_id }}-collapse">
+                    {% if sec and sec.title %}
+                      {{ sec.title }}
+                    {% else %}
+                      {% firstof course.title course.name 'Nội dung khóa học' %} — Phần {{ forloop.counter }}
+                    {% endif %}
+                  </button>
+                </h2>
+
+                <div id="{{ sec_id }}-collapse" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="{{ sec_id }}-header" data-bs-parent="#courseAccordion">
+                  <div class="accordion-body p-0">
+                    <ul class="list-group list-group-flush">
+                      {% for lesson in grp.list %}
+                        {# ---- Build URL một lần cho mỗi lesson (slug hoặc by-id) ---- #}
+                        {% if course.slug %}
+                          {% url 'courses:lesson' course.slug lesson.pk as lesson_url %}
+                          {% url 'courses:quiz_start' course.slug lesson.pk as quiz_url %}
+                        {% else %}
+                          {% url 'courses:lesson_by_id' course.id lesson.pk as lesson_url %}
+                          {% url 'courses:quiz_start_by_id' course.id lesson.pk as quiz_url %}
+                        {% endif %}
+
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi {% if lesson.kind == LessonKind.QUIZ %}bi-question-circle{% else %}bi-play-circle{% endif %}"></i>
+                            <span class="text-truncate">
+                              {% if lesson.order %}<span class="text-muted">{{ lesson.order }}.</span>{% endif %}
+                              {{ lesson.title }}
+                              {% if lesson.is_preview %}<span class="badge rounded-pill bg-success ms-2">Xem thử</span>{% endif %}
+                            </span>
+                          </div>
+
+                          <div class="d-flex align-items-center gap-3">
+                            {% if lesson.duration_text %}
+                              <span class="small text-muted">{{ lesson.duration_text }}</span>
+                            {% endif %}
+
+                            {# ===== Luôn hiển thị 2 nút: Xem bài + Test (nếu được truy cập) ===== #}
+                            {% if can_access or lesson.is_preview %}
+                              <a class="btn btn-sm btn-outline-primary" href="{{ lesson_url }}">Xem bài</a>
+                              <a class="btn btn-sm btn-primary" href="{{ quiz_url }}">Test</a>
+                            {% else %}
+                              <button type="button" class="btn btn-sm btn-outline-secondary disabled"
+                                      data-bs-toggle="tooltip" data-bs-title="Đăng nhập và được duyệt để xem">
+                                <i class="bi bi-lock-fill me-1"></i>Khoá
+                              </button>
+                            {% endif %}
+                          </div>
+                        </li>
+                      {% empty %}
+                        <li class="list-group-item text-muted">Chưa có bài học.</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+
+          <script>
+            // Tooltip cho nút bị khoá
+            document.addEventListener('DOMContentLoaded', function () {
+              const t = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+              t.forEach(el => new bootstrap.Tooltip(el));
+            });
+          </script>
+        {% endwith %}
       </div>
+      {# ======================= /NỘI DUNG KHÓA HỌC ======================= #}
 
       <div class="tab-pane fade" id="tabTeacher">
         {{ course.teacher_bio|default:""|safe }}
@@ -65,19 +127,19 @@
     <div class="card sticky-top" style="top: 80px;">
       <div class="ratio ratio-16x9">
         {% if course.cover %}
-          <img
-            src="{{ course.cover.url }}"
-            class="card-img-top object-fit-cover"
-            alt="{% firstof course.title course.name 'Course cover' %}"
-            loading="lazy">
+          <img src="{{ course.cover.url }}" class="card-img-top object-fit-cover"
+               alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
         {% elif course.cover_url %}
           {% if course.cover_url|slice:":4" == "http" %}
-            <img src="{{ course.cover_url }}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+            <img src="{{ course.cover_url }}" class="card-img-top object-fit-cover"
+                 alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
           {% else %}
-            <img src="{% static course.cover_url %}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+            <img src="{% static course.cover_url %}" class="card-img-top object-fit-cover"
+                 alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
           {% endif %}
         {% else %}
-          <img src="{{ course_placeholder }}" class="card-img-top object-fit-cover" alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
+          <img src="{{ course_placeholder }}" class="card-img-top object-fit-cover"
+               alt="{% firstof course.title course.name 'Course cover' %}" loading="lazy">
         {% endif %}
       </div>
 
@@ -88,7 +150,6 @@
           <li><i class="bi bi-display"></i> Học trên: Mobile, TV, PC</li>
         </ul>
 
-        {# URL vào học/đăng ký: chỉ build khi có slug để tránh NoReverseMatch #}
         {% if course.slug %}
           {% url 'courses:start' course.slug as start_url %}
           {% url 'courses:enroll' course.slug as enroll_url %}

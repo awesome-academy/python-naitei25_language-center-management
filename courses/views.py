@@ -3,18 +3,40 @@ from urllib.parse import urlparse, parse_qs
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views import View
 from django.views.generic import (
     ListView, CreateView, UpdateView, DeleteView, DetailView, TemplateView
 )
 
-from core import constants as C
+# Nếu bạn vẫn dùng core.constants cho paginate, giữ lại:
+from core import constants as C  # <- có thể bỏ nếu không còn dùng
+# Hằng số dùng trong file này: đưa hết vào constants.py để clean
+from constants import (
+    COURSE_QUERY_PARAM,
+    COURSE_SORT_PARAM,
+    COURSE_SORT_POPULAR,
+    COURSE_SORT_RATING,
+    COURSE_SORT_NEW,
+    COURSE_ORDER_BY_POPULAR,
+    COURSE_ORDER_BY_RATING,
+    COURSE_ORDER_BY_NEW,
+    LESSON_ORDERING_FALLBACK,
+    LESSON_ORDERING_WITH_SECTION,
+    YOUTUBE_EMBED_BASE,
+    # COURSE_LIST_PAGE_SIZE,  # nếu bạn bỏ C.PAGINATION, hãy mở dòng này
+)
+
 from .forms import LessonForm, CourseForm
 from .models import Course, Lesson
 from user_progress.models import LessonProgress
+from .mixins import CourseAccessRequiredMixin
+
+# Dùng model quiz từ app 'quizzes'
+from quizzes.models import Quiz, Question, Choice, Submission, Answer
 
 
 # ------------------------------
@@ -45,87 +67,96 @@ def _extract_youtube_id(url: str) -> str:
 
 
 # ------------------------------
-# Course listing (UI mới)
+# Course listing
 # ------------------------------
 class CourseListView(LoginRequiredMixin, ListView):
     """
-    Danh sách khóa học (hiển thị dạng lưới card).
-    - Tìm kiếm theo q (name)
-    - Sắp xếp theo popular/new/rating (có try/except để tránh field không tồn tại)
-    - Paginate theo C.PAGINATION["COURSE_LIST_PAGE_SIZE"]
+    Danh sách khóa học (grid).
+    - Tìm kiếm theo ?q=
+    - sort=?popular|rating|new
+    - paginate
     """
     model = Course
     template_name = "courses/course_list.html"
     context_object_name = "courses"
+
+    # Dùng paginate từ core.constants (giữ nguyên)
     paginate_by = C.PAGINATION["COURSE_LIST_PAGE_SIZE"]
+    # Nếu muốn chuyển về constants.py của bạn, dùng dòng dưới và bỏ dòng trên:
+    # paginate_by = COURSE_LIST_PAGE_SIZE
 
     def get_queryset(self):
         qs = Course.objects.all().order_by("-id")
-        q = self.request.GET.get("q")
+
+        q = self.request.GET.get(COURSE_QUERY_PARAM)
         if q:
-            # đổi 'name' -> 'title' nếu model của bạn dùng field khác
             qs = qs.filter(name__icontains=q)
 
-        sort = self.request.GET.get("sort")
+        sort = self.request.GET.get(COURSE_SORT_PARAM)
         try:
-            if sort == "popular":
-                qs = qs.order_by("-students_count", "-id")
-            elif sort == "rating":
-                qs = qs.order_by("-rating_avg", "-rating_count")
-            elif sort == "new":
-                qs = qs.order_by("-created_at")
+            if sort == COURSE_SORT_POPULAR:
+                qs = qs.order_by(*COURSE_ORDER_BY_POPULAR)
+            elif sort == COURSE_SORT_RATING:
+                qs = qs.order_by(*COURSE_ORDER_BY_RATING)
+            elif sort == COURSE_SORT_NEW:
+                qs = qs.order_by(*COURSE_ORDER_BY_NEW)
         except Exception:
-            # nếu field không có, im lặng dùng mặc định
+            # nếu thiếu field, bỏ qua
             pass
-
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["query"] = self.request.GET.get("q", "")
-        ctx["sort"] = self.request.GET.get("sort", "")
-        # ListView + paginate_by => có sẵn page_obj; template dùng components/_pagination.html
+        ctx["query"] = self.request.GET.get(COURSE_QUERY_PARAM, "")
+        ctx["sort"] = self.request.GET.get(COURSE_SORT_PARAM, "")
         return ctx
 
 
 # ------------------------------
-# Course detail (UI mới)
+# Course detail
 # ------------------------------
-class CourseDetailView(LoginRequiredMixin, DetailView):
+class CourseDetailView(DetailView):
     """
-    Trang chi tiết khóa học: giới thiệu, danh sách bài học, nút Đăng ký/Vào học.
-    Tự động lấy course theo slug/ID (tùy URL hiện tại).
+    Trang chi tiết khóa học.
+    Hỗ trợ lấy theo slug (nếu model có) hoặc id ('pk' hoặc 'id' trong URL).
     """
     model = Course
     template_name = "courses/course_detail.html"
     context_object_name = "course"
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
+    pk_url_kwarg = "pk"
 
-    # chấp nhận slug hoặc id/course_id để tương thích URL cũ
     def get_object(self, queryset=None):
-        kwargs = self.kwargs
-        if "slug" in kwargs:
-            return get_object_or_404(Course, slug=kwargs["slug"])
-        if "course_id" in kwargs:
-            return get_object_or_404(Course, id=kwargs["course_id"])
-        if "pk" in kwargs:
-            return get_object_or_404(Course, pk=kwargs["pk"])
-        return super().get_object(queryset)
+        qs = queryset or self.get_queryset()
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        pk = self.kwargs.get(self.pk_url_kwarg) or self.kwargs.get("id")
+        # Nếu model KHÔNG có field slug, khối slug dưới sẽ ném FieldError.
+        # Ta bắt lỗi và rơi về pk.
+        if slug:
+            try:
+                return get_object_or_404(qs, **{self.slug_field: slug})
+            except Exception:
+                pass
+        if pk:
+            return get_object_or_404(qs, pk=pk)
+        raise AttributeError(
+            f"{self.__class__.__name__} requires a slug ('{self.slug_url_kwarg}') "
+            f"or a primary key ('{self.pk_url_kwarg}' or 'id') in the URL."
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         course = ctx["course"]
-
-        # Lấy toàn bộ lesson của khóa học, ưu tiên order nếu có
+        # Lấy lesson theo order; nếu có section trong model thì ưu tiên sort theo section
         try:
-            lessons = course.lessons.all().order_by("order", "id")
+            lessons = course.lessons.all().order_by(*LESSON_ORDERING_WITH_SECTION)
         except Exception:
-            lessons = course.lessons.all().order_by("id")
-
-        # Đã ghi danh hay chưa: tạm suy luận từ có tiến độ trong khóa
+            lessons = course.lessons.all().order_by(*LESSON_ORDERING_FALLBACK)
+        # Suy luận "đã tham gia" từ LessonProgress (nếu bạn có Enrollment thì đổi tại đây)
         user_is_enrolled = LessonProgress.objects.filter(
             user=self.request.user, lesson__course=course
         ).exists()
-
         ctx.update({
             "lessons": lessons,
             "user_is_enrolled": user_is_enrolled,
@@ -134,7 +165,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
 
 
 # ------------------------------
-# Lesson List / CRUD (giữ tương thích)
+# Lesson List / CRUD
 # ------------------------------
 class LessonListView(LoginRequiredMixin, ListView):
     model = Lesson
@@ -146,7 +177,7 @@ class LessonListView(LoginRequiredMixin, ListView):
         return (
             Lesson.objects.filter(course=self.course)
             .select_related("course")
-            .order_by("order", "id")
+            .order_by(*LESSON_ORDERING_FALLBACK)
         )
 
     def get_context_data(self, **kwargs):
@@ -217,15 +248,15 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         if lesson.video_url:
             vid = _extract_youtube_id(lesson.video_url)
             if vid:
-                embed_url = f"https://www.youtube.com/embed/{vid}"
+                embed_url = f"{YOUTUBE_EMBED_BASE}{vid}"
 
         data["embed_url"] = embed_url
-        data["has_quiz"] = hasattr(lesson, "quiz")
+        data["has_quiz"] = hasattr(lesson, "quiz")  # OneToOne related_name='quiz'
         return data
 
 
 # ------------------------------
-# Course progress (giữ tương thích view cũ)
+# Course progress
 # ------------------------------
 class CourseProgressView(LoginRequiredMixin, TemplateView):
     template_name = "courses/course_progress.html"
@@ -247,34 +278,18 @@ class CourseProgressView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-# # ------------------------------
-# # Home (có thể đặt ở project/views.py, giữ tạm tại đây cho tương thích)
-# # ------------------------------
-# def home_view(request):
-#     news_qs = []
-#     try:
-#         from news.models import News
-#         news_qs = News.objects.order_by("-published_at")[: C.HOMEPAGE["NEWS_LIMIT"]]
-#     except Exception:
-#         pass
-#     return render(request, "home.html", {"news_list": news_qs})
-
+# ------------------------------
+# Khóa học của tôi
+# ------------------------------
 class MyCoursesView(LoginRequiredMixin, ListView):
-    """
-    Danh sách 'Khóa học của tôi'.
-    Ở đây suy luận từ LessonProgress: khóa học nào bạn đã có tiến độ => đã tham gia.
-    Nếu bạn có model Enrollment riêng, thay truy vấn trong get_queryset().
-    """
     model = Course
     template_name = "courses/course_list.html"
     context_object_name = "courses"
     paginate_by = C.PAGINATION["COURSE_LIST_PAGE_SIZE"]
+    # hoặc: paginate_by = COURSE_LIST_PAGE_SIZE
 
     def get_queryset(self):
-        # Nếu dùng Enrollment:
-        # return Course.objects.filter(enrollments__user=self.request.user).distinct().order_by('-id')
-
-        # Suy luận từ LessonProgress
+        # Nếu có Enrollment model, thay truy vấn theo Enrollment
         return (
             Course.objects
                   .filter(lessons__lessonprogress__user=self.request.user)
@@ -284,21 +299,193 @@ class MyCoursesView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # tái sử dụng form tìm kiếm/sort nếu cần
-        ctx["query"] = self.request.GET.get("q", "")
-        ctx["sort"] = self.request.GET.get("sort", "")
+        ctx["query"] = self.request.GET.get(COURSE_QUERY_PARAM, "")
+        ctx["sort"] = self.request.GET.get(COURSE_SORT_PARAM, "")
         return ctx
 
-class CourseCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    permission_required = "courses.add_course"
-    model = Course
-    form_class = CourseForm
-    template_name = "courses/course_form.html"
-    success_url = reverse_lazy("courses:list")  # đổi theo URL bạn đang dùng
 
-class CourseUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    permission_required = "courses.change_course"
-    model = Course
-    form_class = CourseForm
-    template_name = "courses/course_form.html"
-    success_url = reverse_lazy("courses:list")
+# ------------------------------
+# Học bài (layout có playlist + prev/next)
+# ------------------------------
+class LessonLearnView(CourseAccessRequiredMixin, DetailView):
+    """
+    Yêu cầu URL có 'slug' HOẶC 'course_id' để mixin xác thực.
+    - Nếu có slug: filter theo course__slug.
+    - Nếu không có slug: filter theo course_id truyền trong URL (fallback).
+    """
+    model = Lesson
+    pk_url_kwarg = "lesson_id"
+    template_name = "courses/lesson_learn.html"
+
+    def get_queryset(self):
+        qs = Lesson.objects.select_related("course")
+        slug = self.kwargs.get("slug")
+
+        if slug:
+            try:
+                Course._meta.get_field("slug")
+                return qs.filter(course__slug=slug)
+            except Exception:
+                pass
+
+        course_id = self.kwargs.get("course_id")
+        if course_id:
+            return qs.filter(course_id=course_id)
+
+        lesson_id = self.kwargs.get("lesson_id")
+        if lesson_id:
+            try:
+                course_id = Lesson.objects.only("course_id").get(pk=lesson_id).course_id
+                return qs.filter(course_id=course_id)
+            except Lesson.DoesNotExist:
+                return qs.none()
+
+        return qs.none()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        lesson = self.object
+        # playlist
+        try:
+            siblings = list(
+                lesson.course.lessons.select_related("course").order_by(*LESSON_ORDERING_WITH_SECTION)
+            )
+        except Exception:
+            siblings = list(
+                lesson.course.lessons.select_related("course").order_by(*LESSON_ORDERING_FALLBACK)
+            )
+        ctx["siblings"] = siblings
+
+        # prev/next
+        idx = next((i for i, x in enumerate(siblings) if x.id == lesson.id), 0)
+        ctx["prev_lesson"] = siblings[idx-1] if idx > 0 else None
+        ctx["next_lesson"] = siblings[idx+1] if idx < len(siblings)-1 else None
+
+        # URL nhúng YouTube
+        embed_url = ""
+        if getattr(lesson, "video_url", None):
+            vid = _extract_youtube_id(lesson.video_url)
+            if vid:
+                embed_url = f"{YOUTUBE_EMBED_BASE}{vid}"
+        ctx["embed_url"] = embed_url
+
+        return ctx
+
+
+# ------------------------------
+# Quiz: start → take → result
+# ------------------------------
+class QuizStartView(CourseAccessRequiredMixin, View):
+    template_name = "courses/quiz_start.html"
+
+    def get(self, request, **kwargs):
+        lesson_id = kwargs["lesson_id"]
+        slug = kwargs.get("slug")
+        if slug:
+            try:
+                lesson = get_object_or_404(Lesson, id=lesson_id, course__slug=slug)
+            except Exception:
+                lesson = get_object_or_404(Lesson, id=lesson_id)
+        else:
+            course_id = kwargs.get("course_id")
+            if course_id:
+                lesson = get_object_or_404(Lesson, id=lesson_id, course_id=course_id)
+            else:
+                lesson = get_object_or_404(Lesson, id=lesson_id)
+
+        quiz = get_object_or_404(Quiz, lesson=lesson)
+        return render(
+            request,
+            self.template_name,
+            {"lesson": lesson, "quiz": quiz, "course": getattr(self, "course", lesson.course)},
+        )
+
+    def post(self, request, **kwargs):
+        lesson = get_object_or_404(Lesson, id=kwargs["lesson_id"])
+        quiz = get_object_or_404(Quiz, lesson=lesson)
+        sub = Submission.objects.create(quiz=quiz, user=request.user)  # started_at=now
+        if "slug" in kwargs:
+            return redirect("courses:quiz_take", slug=kwargs["slug"], submission_id=sub.id)
+        course_id = kwargs.get("course_id")
+        if course_id:
+            return redirect("courses:quiz_take_by_id", course_id=course_id, submission_id=sub.id)
+        return redirect("courses:quiz_take", slug=getattr(lesson.course, "slug", ""), submission_id=sub.id)
+
+
+class QuizTakeView(CourseAccessRequiredMixin, View):
+    template_name = "courses/quiz_take.html"
+
+    def get(self, request, **kwargs):
+        sub = get_object_or_404(
+            Submission.objects.select_related("quiz__lesson__course"),
+            id=kwargs["submission_id"],
+            user=request.user,
+        )
+        quiz = sub.quiz
+        end_at = sub.started_at + timezone.timedelta(minutes=quiz.time_minutes)
+        questions = quiz.questions.prefetch_related("choices").order_by("order", "id")
+        return render(
+            request,
+            self.template_name,
+            {
+                "submission": sub,
+                "quiz": quiz,
+                "questions": questions,
+                "end_at": int(end_at.timestamp() * 1000),
+            },
+        )
+
+    def post(self, request, **kwargs):
+        sub = get_object_or_404(Submission, id=kwargs["submission_id"], user=request.user)
+        quiz = sub.quiz
+        # chấm điểm
+        correct = wrong = skip = 0
+        for q in quiz.questions.all():
+            choice_id = request.POST.get(f"q{q.id}")  # value là choice.id
+            if not choice_id:
+                skip += 1
+                Answer.objects.create(submission=sub, question=q, choice=None)
+                continue
+            ch = Choice.objects.filter(id=choice_id, question=q).first()
+            Answer.objects.create(submission=sub, question=q, choice=ch)
+            if ch and ch.is_correct:
+                correct += 1
+            else:
+                wrong += 1
+        sub.correct_cnt = correct
+        sub.wrong_cnt = wrong
+        sub.skip_cnt = skip
+        sub.score = correct  # 1 câu = 1 điểm (tuỳ chỉnh nếu cần)
+        sub.submitted_at = timezone.now()
+        sub.save()
+
+        if "slug" in kwargs:
+            return redirect("courses:quiz_result", slug=kwargs["slug"], submission_id=sub.id)
+        course_id = kwargs.get("course_id")
+        if course_id:
+            return redirect("courses:quiz_result_by_id", course_id=course_id, submission_id=sub.id)
+        return redirect("courses:quiz_result", slug=getattr(sub.quiz.lesson.course, "slug", ""), submission_id=sub.id)
+
+
+class QuizResultView(CourseAccessRequiredMixin, DetailView):
+    model = Submission
+    pk_url_kwarg = "submission_id"
+    template_name = "courses/quiz_result.html"
+
+    def get_queryset(self):
+        return Submission.objects.select_related("quiz__lesson__course").filter(user=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        sub = self.object
+        # thời lượng làm bài (giây)
+        duration_seconds = 0
+        if sub.submitted_at and sub.started_at:
+            duration_seconds = int((sub.submitted_at - sub.started_at).total_seconds())
+        m, s = divmod(duration_seconds, 60)
+        ctx["duration_seconds"] = duration_seconds
+        ctx["duration_text"] = f"{m} phút {s} giây" if m else f"{s} giây"
+
+        # (tuỳ chọn) đưa danh sách answer để render review
+        ctx["answers"] = sub.answers.select_related("question", "choice").all()
+        return ctx

@@ -1,12 +1,29 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.conf import settings
+
 from constants import (
+    # Course & Lesson
     COURSE_NAME_MAX_LENGTH,
     LESSON_TITLE_MAX_LENGTH,
     LESSON_ORDER_DEFAULT,
-)
+    COURSE_COVER_UPLOAD_PATH,
+    LESSON_VIDEO_UPLOAD_PATH,
+    COURSE_DEFAULT_ORDERING,
+    LESSON_DEFAULT_ORDERING,
+    LESSON_UNIQUE_TOGETHER,
 
+    # Section
+    SECTION_TITLE_MAX_LENGTH,
+    SECTION_ORDER_DEFAULT,
+
+    # Enrollment
+    ENROLLMENT_STATUS_MAX_LENGTH,
+
+    # Messages
+    LESSON_VIDEO_REQUIRED_MSG,
+)
 
 
 class Course(models.Model):
@@ -14,7 +31,7 @@ class Course(models.Model):
     description = models.TextField(_("Description"), blank=True)
     cover = models.ImageField(
         _("Cover Image"),
-        upload_to="courses/covers/",
+        upload_to=COURSE_COVER_UPLOAD_PATH,
         blank=True,
         null=True,
     )
@@ -24,7 +41,7 @@ class Course(models.Model):
     class Meta:
         verbose_name = _("Course")
         verbose_name_plural = _("Courses")
-        ordering = ["name"]
+        ordering = COURSE_DEFAULT_ORDERING
 
     def __str__(self) -> str:
         return self.name
@@ -32,7 +49,7 @@ class Course(models.Model):
 
 class Lesson(models.Model):
     course = models.ForeignKey(
-        "courses.Course",  # chỉ rõ app label để tránh mơ hồ
+        "courses.Course",
         on_delete=models.CASCADE,
         related_name="lessons",
         verbose_name=_("Course"),
@@ -44,10 +61,9 @@ class Lesson(models.Model):
     video_url = models.URLField(_("Video URL"), blank=True, null=True)
     video_file = models.FileField(
         _("Video File"),
-        upload_to="lessons/videos/",
+        upload_to=LESSON_VIDEO_UPLOAD_PATH,
         blank=True,
         null=True,
-        help_text=_("Upload video file (mp4, webm, …) if you don't use a YouTube URL."),
     )
 
     created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
@@ -56,15 +72,60 @@ class Lesson(models.Model):
     class Meta:
         verbose_name = _("Lesson")
         verbose_name_plural = _("Lessons")
-        ordering = ["course", "order"]
-        unique_together = (("course", "order"),)
+        ordering = LESSON_DEFAULT_ORDERING
+        unique_together = (LESSON_UNIQUE_TOGETHER,)
 
     def __str__(self) -> str:
         return f"{self.course.name} – {self.title}"
 
     def clean(self):
-        # Nếu cả hai đều trống thì báo lỗi nhẹ nhàng
+        # bắt buộc có 1 trong 2: video_url hoặc video_file
         if not self.video_url and not self.video_file:
-            raise ValidationError(
-                {"video_url": _("Provide either a Video URL or upload a Video File.")}
-            )
+            raise ValidationError({"video_url": _(LESSON_VIDEO_REQUIRED_MSG)})
+
+
+class EnrollmentStatus(models.TextChoices):
+    PENDING  = "PENDING",  _("Chờ duyệt")
+    APPROVED = "APPROVED", _("Đã duyệt")
+    REJECTED = "REJECTED", _("Từ chối")
+
+
+class Enrollment(models.Model):
+    user   = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+    status = models.CharField(
+        max_length=ENROLLMENT_STATUS_MAX_LENGTH,
+        choices=EnrollmentStatus.choices,
+        default=EnrollmentStatus.PENDING,
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("user", "course")
+
+
+class Section(models.Model):
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
+    title  = models.CharField(max_length=SECTION_TITLE_MAX_LENGTH)
+    order  = models.PositiveIntegerField(default=SECTION_ORDER_DEFAULT)
+
+    def __str__(self) -> str:
+        return f"{self.course.name} – {self.title}"
+
+
+class LessonKind(models.TextChoices):
+    VIDEO = "VIDEO", _("Video")
+    NOTE  = "NOTE",  _("Ghi chú")
+    QUIZ  = "QUIZ",  _("Bài kiểm tra")
