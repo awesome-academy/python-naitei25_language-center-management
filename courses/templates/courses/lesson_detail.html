@@ -1,57 +1,51 @@
-{% extends 'base.html' %}
-{% load i18n static %}
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ lesson.title }} — {{ C.SITE.NAME }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4"
-     data-lesson-id="{{ lesson.pk }}"
-     data-complete-url="{% url 'user_progress:mark_lesson_complete' lesson.pk %}">
-  <h2 class="mb-3">{{ lesson.title }}</h2>
+<div class="row g-4">
+  <div class="col-lg-8">
+    <h1 class="h4 mb-3">{{ lesson.title }}</h1>
 
-  <p class="lead">{{ lesson.description }}</p>
-
-  <p>
-    <strong>{% trans "Status:" %}</strong>
-    <span id="lesson-status"
-          class="badge {% if lesson.pk in completed_lessons %}badge-success{% else %}badge-secondary{% endif %}">
-      {% if lesson.pk in completed_lessons %}
-        {% trans "Completed" %}
-      {% else %}
-        {% trans "Not Started" %}
-      {% endif %}
-    </span>
-  </p>
-
-  <div class="lesson-video mb-4">
     {% if embed_url %}
-      <div class="embed-responsive embed-responsive-16by9">
-        <iframe class="embed-responsive-item"
-                src="{{ embed_url }}"
-                allowfullscreen
-                title="{% blocktrans with t=lesson.title %}Video bài học: {{ t }}{% endblocktrans %}">
-        </iframe>
+      <div class="ratio ratio-16x9 mb-3">
+        <iframe
+          id="yt-player"
+          src="{{ embed_url }}?enablejsapi=1&rel=0"
+          title="{{ lesson.title }}"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>
       </div>
     {% elif lesson.video_file %}
-      <video controls preload="metadata" class="w-100">
-        <source src="{{ lesson.video_file.url }}" type="video/mp4">
-        {% trans "Trình duyệt của bạn không hỗ trợ phát video." %}
-      </video>
+      <video class="w-100 mb-3" controls src="{{ lesson.video_file.url }}"></video>
     {% else %}
-      <p class="text-muted">{% trans "Chưa có video cho bài học này." %}</p>
+      <div class="alert alert-secondary">{% trans "Bài này chưa có video." %}</div>
+    {% endif %}
+
+    {% if has_quiz %}
+      <a class="btn btn-teal" href="{% url 'quizzes:detail' lesson.id %}">{% trans "Làm quiz" %}</a>
     {% endif %}
   </div>
 
-  {% if lesson.quiz %}
-    <a href="{% url 'quizzes:quiz_detail' lesson_id=lesson.pk %}"
-       class="btn btn-success mb-3">
-      {% trans "Take Quiz" %}
-    </a>
-  {% endif %}
-
-  <a href="{% url 'courses:lesson_list' course_id=lesson.course.id %}"
-     class="btn btn-outline-secondary">
-    &larr; {% trans "Quay lại danh sách bài học" %}
-  </a>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-grid">
+          <button id="markCompleteBtn" class="btn btn-outline-teal">{% trans "Đánh dấu hoàn thành" %}</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<script>
+// Gắn dataset để lesson_detail.js sử dụng
+document.body.dataset.lessonId = "{{ lesson.id }}";
+document.body.dataset.completeUrl = "{% url 'user_progress:mark_lesson_complete' lesson.id %}";
+</script>
 <script src="{% static 'js/lesson_detail.js' %}"></script>
-{% endblock content %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Tiến độ học tập — {{ C.SITE.NAME }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Tiến độ học tập</h1>
+
+{% for course in progress_list %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 mb-0">{{ course.title }}</h2>
+        <span class="text-muted small">{{ course.completed }}/{{ course.total }} bài</span>
+      </div>
+      <div class="progress" role="progressbar" aria-valuenow="{{ course.percent }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar bg-teal" style="width: {{ course.percent }}%">{{ course.percent }}%</div>
+      </div>
+    </div>
+  </div>
+{% empty %}
+  <p class="text-muted">Bạn chưa tham gia khóa học nào.</p>
+{% endfor %}
+{% endblock %}
