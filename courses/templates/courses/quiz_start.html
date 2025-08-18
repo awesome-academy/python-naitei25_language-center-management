@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="mx-auto" style="max-width: 820px;">
+    <div class="bg-white p-4 rounded shadow-sm">
+      {% if course.slug %}
+        {% url 'courses:detail' course.slug as back_url %}
+      {% else %}
+        {% url 'courses:detail_by_id' course.id as back_url %}
+      {% endif %}
+
+      <a class="text-decoration-none" href="{{ back_url }}">
+        <i class="bi bi-arrow-left me-1"></i>{% trans "Khóa học" %}
+      </a>
+
+      <h1 class="h3 mt-2 mb-3">{{ quiz.title }}</h1>
+      <ul class="list-inline text-muted mb-4">
+        <li class="list-inline-item">
+          <i class="bi bi-list-ul"></i>
+          {% blocktrans count n=quiz.question_count %}{{ n }} câu{% plural %}{{ n }} câu{% endblocktrans %}
+        </li>
+        <li class="list-inline-item">
+          <i class="bi bi-alarm"></i>
+          {% blocktrans count m=quiz.time_minutes %}{{ m }} phút{% plural %}{{ m }} phút{% endblocktrans %}
+        </li>
+        {% if quiz.pass_rate %}
+          <li class="list-inline-item">
+            <i class="bi bi-clipboard-check"></i>
+            {% blocktrans with p=quiz.pass_rate %}Đạt: {{ p }}%{% endblocktrans %}
+          </li>
+        {% endif %}
+      </ul>
+
+      <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-lg" type="submit">{% trans "Bắt đầu làm bài" %}</button>
+      </form>
+      <p class="text-muted mt-3 mb-0">
+        {% trans "Hãy sẵn sàng, thời gian sẽ bắt đầu tính ngay khi bạn bấm “Bắt đầu làm bài”." %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

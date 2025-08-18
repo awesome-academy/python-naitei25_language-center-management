@@ -1,0 +1,43 @@
+{% load i18n course_media %}
+
+{% trans "Khóa học" as course_title_fallback %}
+
+<div class="card course-card h-100 shadow-sm">
+  <div class="ratio ratio-16x9">
+    {# Render <img> theo thứ tự ưu tiên: cover file -> cover_url -> placeholder #}
+    {% course_cover_img course classes="card-img-top object-fit-cover" %}
+  </div>
+
+  <div class="card-body d-flex flex-column">
+    <h3 class="card-title h6 text-truncate-2 mb-1">
+      {% firstof course.title course.name course_title_fallback %}
+    </h3>
+
+    {# CHỈ hiển thị khi show_desc=True #}
+    {% if show_desc %}
+      <p class="card-text text-muted small text-truncate-3 mb-3">
+        {% firstof course.short_desc course.description "" %}
+      </p>
+    {% endif %}
+
+    <div class="mt-auto d-flex justify-content-between align-items-center">
+      {% if C.COURSE_CARD.SHOW_RATING %}
+        <div class="text-warning small">
+          <i class="bi bi-star-fill" aria-hidden="true"></i>
+          <span class="fw-semibold">{{ course.rating_avg|default:"0.0" }}</span>
+          <span class="text-muted">({{ course.rating_count|default:0 }})</span>
+        </div>
+      {% endif %}
+      {% if C.COURSE_CARD.SHOW_STUDENT_COUNT %}
+        <div class="text-muted small">
+          <i class="bi bi-people" aria-hidden="true"></i> {{ course.students_count|default:0 }}
+        </div>
+      {% endif %}
+    </div>
+
+    {# Link chi tiết: ưu tiên slug, rồi id, cuối cùng '#' #}
+    {% if course.slug %}{% url 'courses:detail' course.slug as detail_by_slug %}{% endif %}
+    {% if course.id %}{% url 'courses:detail_by_id' course.id as detail_by_id %}{% endif %}
+    <a class="stretched-link" href="{% firstof detail_by_slug detail_by_id '#' %}"></a>
+  </div>
+</div>
