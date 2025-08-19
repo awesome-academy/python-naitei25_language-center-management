@@ -1,20 +1,28 @@
-# courses/views.py
-from urllib.parse import urlparse, parse_qs
-import re
+from __future__ import annotations
 
+# ===== Stdlib =====
+import re
+from urllib.parse import urlparse, parse_qs
+
+# ===== Django =====
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.http import JsonResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views import View
+from django.views.decorators.http import require_POST
 from django.views.generic import (
     ListView, CreateView, UpdateView, DeleteView, DetailView, TemplateView
 )
 
-# Nếu bạn vẫn dùng core.constants cho paginate, giữ lại:
-from core import constants as C  # <- có thể bỏ nếu không còn dùng
-# Hằng số dùng trong file này: đưa hết vào constants.py để clean
+# ===== Project constants =====
+from core import constants as C  # noqa: F401
+
 from constants import (
     COURSE_QUERY_PARAM,
     COURSE_SORT_PARAM,
@@ -27,16 +35,24 @@ from constants import (
     LESSON_ORDERING_FALLBACK,
     LESSON_ORDERING_WITH_SECTION,
     YOUTUBE_EMBED_BASE,
-    # COURSE_LIST_PAGE_SIZE,  # nếu bạn bỏ C.PAGINATION, hãy mở dòng này
+    # COURSE_LIST_PAGE_SIZE,  # bật nếu bạn bỏ C.PAGINATION
+    EnrollmentStatus,
 )
 
+# ===== Local apps =====
 from .forms import LessonForm, CourseForm
-from .models import Course, Lesson
-from user_progress.models import LessonProgress
 from .mixins import CourseAccessRequiredMixin
+from .models import Course, Lesson, Enrollment
 from .utils import _extract_youtube_id
-# Dùng model quiz từ app 'quizzes'
-from quizzes.models import Quiz, Question, Choice, Submission, Answer
+
+# Dùng models từ app quizzes (chỉ import cái nào bạn thật sự dùng)
+from quizzes.models import Quiz, Question, Choice, Submission, Answer  # noqa: F401
+
+from user_progress.models import LessonProgress  # noqa: F401
+from django.urls import reverse
+from .utils import _extract_youtube_id, user_can_access_course
+from django.db.models import Q
+from django.db.models import Prefetch
 
 # ------------------------------
 # Course listing
@@ -88,10 +104,6 @@ class CourseListView(LoginRequiredMixin, ListView):
 # Course detail
 # ------------------------------
 class CourseDetailView(DetailView):
-    """
-    Trang chi tiết khóa học.
-    Hỗ trợ lấy theo slug (nếu model có) hoặc id ('pk' hoặc 'id' trong URL).
-    """
     model = Course
     template_name = "courses/course_detail.html"
     context_object_name = "course"
@@ -99,42 +111,57 @@ class CourseDetailView(DetailView):
     slug_url_kwarg = "slug"
     pk_url_kwarg = "pk"
 
+    # KHÔNG prefetch lessons__section nếu không có field section
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Nếu chắc Lesson có related_name='lessons' bạn có thể prefetch ở đây.
+        # Để an toàn (tránh cấu hình khác), ta bỏ qua prefetch tại đây.
+        return qs
+
     def get_object(self, queryset=None):
         qs = queryset or self.get_queryset()
         slug = self.kwargs.get(self.slug_url_kwarg)
-        pk = self.kwargs.get(self.pk_url_kwarg) or self.kwargs.get("id")
-        # Nếu model KHÔNG có field slug, khối slug dưới sẽ ném FieldError.
-        # Ta bắt lỗi và rơi về pk.
         if slug:
-            try:
-                return get_object_or_404(qs, **{self.slug_field: slug})
-            except Exception:
-                pass
-        if pk:
-            return get_object_or_404(qs, pk=pk)
-        raise AttributeError(
-            f"{self.__class__.__name__} requires a slug ('{self.slug_url_kwarg}') "
-            f"or a primary key ('{self.pk_url_kwarg}' or 'id') in the URL."
-        )
+            return get_object_or_404(qs, **{self.slug_field: slug})
+        pk = self.kwargs.get(self.pk_url_kwarg) or self.kwargs.get("id") or self.kwargs.get("course_id")
+        return get_object_or_404(qs, pk=pk)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        course = ctx["course"]
-        # Lấy lesson theo order; nếu có section trong model thì ưu tiên sort theo section
-        try:
-            lessons = course.lessons.all().order_by(*LESSON_ORDERING_WITH_SECTION)
-        except Exception:
-            lessons = course.lessons.all().order_by(*LESSON_ORDERING_FALLBACK)
-        # Suy luận "đã tham gia" từ LessonProgress (nếu bạn có Enrollment thì đổi tại đây)
-        user_is_enrolled = LessonProgress.objects.filter(
-            user=self.request.user, lesson__course=course
-        ).exists()
-        ctx.update({
-            "lessons": lessons,
-            "user_is_enrolled": user_is_enrolled,
-        })
-        return ctx
+        course = self.object
 
+        # ---- Lessons (an toàn cho cả khi KHÔNG có section) ----
+        lessons_qs = Lesson.objects.filter(course=course)
+        if HAS_LESSON_SECTION:
+            lessons_qs = lessons_qs.select_related("section")
+            try:
+                ordering = list(LESSON_ORDERING_WITH_SECTION)  # ví dụ: ("section__id", "order", "id")
+            except NameError:
+                ordering = ["section_id", "order", "id"]
+        else:
+            try:
+                ordering = list(LESSON_ORDERING_FALLBACK)      # ví dụ: ("order", "id")
+            except NameError:
+                ordering = ["order", "id"]
+
+        ctx["lessons"] = lessons_qs.order_by(*ordering)
+
+        # ---- Enrollment / quyền truy cập ----
+        user = self.request.user
+        enrollment = None
+        if user.is_authenticated:
+            enrollment = (
+                Enrollment.objects
+                .filter(user=user, course=course)
+                .only("id", "status", "approved_at")
+                .first()
+            )
+        ctx["enrollment"] = enrollment
+        ctx["user_is_enrolled"] = (
+            bool(enrollment and enrollment.status == EnrollmentStatus.APPROVED.value)
+            or (user.is_authenticated and (user.is_staff or user.is_superuser))
+        )
+        return ctx
 
 # ------------------------------
 # Lesson List / CRUD
@@ -255,27 +282,37 @@ class CourseProgressView(LoginRequiredMixin, TemplateView):
 # ------------------------------
 class MyCoursesView(LoginRequiredMixin, ListView):
     model = Course
-    template_name = "courses/course_list.html"
+    template_name = "courses/my_courses.html"
     context_object_name = "courses"
-    paginate_by = C.PAGINATION["COURSE_LIST_PAGE_SIZE"]
-    # hoặc: paginate_by = COURSE_LIST_PAGE_SIZE
+    paginate_by = 12
 
     def get_queryset(self):
-        # Nếu có Enrollment model, thay truy vấn theo Enrollment
-        return (
-            Course.objects
-                  .filter(lessons__lessonprogress__user=self.request.user)
-                  .distinct()
-                  .order_by("-id")
+        user = self.request.user
+
+        # Enrollments đã duyệt của user
+        approved_enr_qs = (
+            Enrollment.objects
+            .filter(user=user, status=EnrollmentStatus.APPROVED.value)
+            .only("id", "course_id", "approved_at", "status")
         )
+
+        qs = (
+            Course.objects
+            .filter(enrollments__in=approved_enr_qs)
+            .prefetch_related(
+                Prefetch("enrollments", queryset=approved_enr_qs, to_attr="my_enrollments"),
+                "lessons"  # nếu Lesson có related_name='lessons'; nếu không thì xoá dòng này
+            )
+            .distinct()
+            .order_by("-enrollments__approved_at", "-id")
+        )
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["query"] = self.request.GET.get(COURSE_QUERY_PARAM, "")
-        ctx["sort"] = self.request.GET.get(COURSE_SORT_PARAM, "")
+        ctx["page_title"] = _("Khóa học của tôi")
         return ctx
-
-
+    
 # ------------------------------
 # Học bài (layout có playlist + prev/next)
 # ------------------------------
@@ -461,3 +498,150 @@ class QuizResultView(CourseAccessRequiredMixin, DetailView):
         # (tuỳ chọn) đưa danh sách answer để render review
         ctx["answers"] = sub.answers.select_related("question", "choice").all()
         return ctx
+
+from django.core.exceptions import FieldDoesNotExist
+
+def _model_has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except FieldDoesNotExist:
+        return False
+
+HAS_LESSON_SECTION = _model_has_field(Lesson, "section")
+
+
+@login_required
+@require_POST
+def enroll_request(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    enrollment, created = Enrollment.objects.get_or_create(
+        user=request.user, course=course,
+        defaults={"status": EnrollmentStatus.PENDING.value}
+    )
+    # Nếu từng bị từ chối → cho đăng ký lại
+    if not created and enrollment.status == EnrollmentStatus.REJECTED.value:
+        enrollment.status = EnrollmentStatus.PENDING.value
+        enrollment.approved_at = None
+        enrollment.save(update_fields=["status", "approved_at"])
+
+    if enrollment.status == EnrollmentStatus.APPROVED.value:
+        messages.info(request, _("You are already approved for this course."))
+    else:
+        messages.success(request, _("Your enrollment request has been sent."))
+    return redirect(course.get_absolute_url() if hasattr(course, "get_absolute_url") else "/")
+
+@staff_member_required
+@require_POST
+def approve_enrollment(request, enrollment_id):
+    e = get_object_or_404(Enrollment, pk=enrollment_id)
+    e.status = EnrollmentStatus.APPROVED.value
+    e.approved_at = timezone.now()
+    e.save(update_fields=["status", "approved_at"])
+    messages.success(request, _("Enrollment approved."))
+    return redirect(e.course.get_absolute_url())
+
+# ===== Start course (đi tới bài học đầu tiên) =====
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
+@login_required
+def start_course_id(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+
+    # Lấy bài học đầu tiên theo thứ tự (ưu tiên theo section rồi order)
+    first_lesson = (
+        Lesson.objects.filter(course=course)
+        .select_related("section")
+        .order_by("section__id", "order", "id")
+        .first()
+    )
+    if not first_lesson:
+        messages.info(request, _("Khóa học chưa có bài học."))
+        return redirect("courses:detail_by_id", pk=course.pk)
+
+    if not user_can_access_course(request.user, course):
+        messages.warning(request, _("Bạn cần được duyệt để bắt đầu học."))
+        return redirect("courses:detail_by_id", pk=course.pk)
+
+    return redirect("courses:lesson_by_id", course_id=course.pk, lesson_id=first_lesson.pk)
+
+
+@login_required
+def start_course_id(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+    lessons = Lesson.objects.filter(course=course)
+    if HAS_LESSON_SECTION:
+        lessons = lessons.select_related("section")
+        order = ("section_id", "order", "id")
+    else:
+        order = ("order", "id")
+    first_lesson = lessons.order_by(*order).first()
+    if not first_lesson:
+        messages.info(request, _("Khóa học chưa có bài học."))
+        return redirect("courses:detail_by_id", pk=course.pk)
+    if not user_can_access_course(request.user, course):
+        messages.warning(request, _("Bạn cần được duyệt để bắt đầu học."))
+        return redirect("courses:detail_by_id", pk=course.pk)
+    return redirect("courses:lesson_by_id", course_id=course.pk, lesson_id=first_lesson.pk)
+
+@login_required
+def start_course_slug(request, slug):
+    course = get_object_or_404(Course, slug=slug)
+    lessons = Lesson.objects.filter(course=course)
+    if HAS_LESSON_SECTION:
+        lessons = lessons.select_related("section")
+        order = ("section_id", "order", "id")
+    else:
+        order = ("order", "id")
+    first_lesson = lessons.order_by(*order).first()
+    if not first_lesson:
+        messages.info(request, _("Khóa học chưa có bài học."))
+        return redirect("courses:detail", slug=course.slug)
+    if not user_can_access_course(request.user, course):
+        messages.warning(request, _("Bạn cần được duyệt để bắt đầu học."))
+        return redirect("courses:detail", slug=course.slug)
+    return redirect("courses:lesson", slug=course.slug, lesson_id=first_lesson.pk)
+
+
+# ===== Enroll (đăng ký học) theo ID & slug =====
+@login_required
+@require_POST
+def enroll_request(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+    enr, created = Enrollment.objects.get_or_create(
+        user=request.user, course=course,
+        defaults={"status": EnrollmentStatus.PENDING.value},
+    )
+    if not created and enr.status == EnrollmentStatus.REJECTED.value:
+        enr.status = EnrollmentStatus.PENDING.value
+        enr.approved_at = None
+        enr.save(update_fields=["status", "approved_at"])
+
+    if enr.status == EnrollmentStatus.APPROVED.value:
+        messages.info(request, _("Bạn đã được duyệt khóa học này."))
+    else:
+        messages.success(request, _("Yêu cầu đăng ký đã được gửi."))
+
+    return redirect("courses:detail_by_id", pk=course.pk)
+
+
+@login_required
+@require_POST
+def enroll_request_slug(request, slug):
+    course = get_object_or_404(Course, slug=slug)
+    enr, created = Enrollment.objects.get_or_create(
+        user=request.user, course=course,
+        defaults={"status": EnrollmentStatus.PENDING.value},
+    )
+    if not created and enr.status == EnrollmentStatus.REJECTED.value:
+        enr.status = EnrollmentStatus.PENDING.value
+        enr.approved_at = None
+        enr.save(update_fields=["status", "approved_at"])
+
+    if enr.status == EnrollmentStatus.APPROVED.value:
+        messages.info(request, _("Bạn đã được duyệt khóa học này."))
+    else:
+        messages.success(request, _("Yêu cầu đăng ký đã được gửi."))
+
+    return redirect("courses:detail", slug=course.slug)

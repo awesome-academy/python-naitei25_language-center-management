@@ -1,6 +1,7 @@
 from .models import Enrollment, EnrollmentStatus
 import re
 from urllib.parse import urlparse, parse_qs
+from constants import EnrollmentStatus
 
 def user_can_access_course(user, course):
     if not user.is_authenticated:
@@ -31,3 +32,15 @@ def _extract_youtube_id(url: str) -> str:
         return m.group(1) if m else ""
     except Exception:
         return ""
+
+
+def user_can_access_course(user, course) -> bool:
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return Enrollment.objects.filter(
+        user=user,
+        course=course,
+        status=EnrollmentStatus.APPROVED.value
+    ).exists()

@@ -1,4 +1,5 @@
 from enum import Enum
+from django.utils.translation import gettext_lazy as _
 
 # ====== Common Enums ======
 class UserRole(Enum):
@@ -128,3 +129,19 @@ YOUTUBE_EMBED_BASE = "https://www.youtube.com/embed/"
 
 # Paginate (nếu bạn chưa có trong core.constants)
 COURSE_LIST_PAGE_SIZE = 12  # có thể điều chỉnh
+
+# ----- Enrollment status -----
+class EnrollmentStatus(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+MAX_STATUS_LENGTH = 20
+
+STATUS_LABELS = {
+    EnrollmentStatus.PENDING.value:  _("Pending"),
+    EnrollmentStatus.APPROVED.value: _("Approved"),
+    EnrollmentStatus.REJECTED.value: _("Rejected"),
+}
+
+STATUS_CHOICES = tuple((k, v) for k, v in STATUS_LABELS.items())
