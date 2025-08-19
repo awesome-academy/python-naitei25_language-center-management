@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+  {% if form.instance.pk %}
+    {% trans "Sửa khóa học" %}
+  {% else %}
+    {% trans "Tạo khóa học" %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="h4 mb-3">
+    {% if form.instance.pk %}
+      {% trans "Sửa khóa học" %}
+    {% else %}
+      {% trans "Tạo khóa học" %}
+    {% endif %}
+  </h1>
+
+  <form method="post" enctype="multipart/form-data" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.name.id_for_label }}">{% trans "Tên khóa học" %}</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.description.id_for_label }}">{% trans "Mô tả" %}</label>
+      {{ form.description }}
+      {{ form.description.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.cover.id_for_label }}">{% trans "Ảnh bìa" %}</label>
+      {{ form.cover }}
+      {{ form.cover.errors }}
+      {% if form.instance.pk and form.instance.cover %}
+        <div class="mt-2">
+          <img src="{{ form.instance.cover.url }}" alt="{% trans 'Ảnh bìa hiện tại' %}" style="max-height:120px">
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-teal">{% trans "Lưu" %}</button>
+      <a class="btn btn-outline-secondary" href="{% url 'courses:list' %}">{% trans "Hủy" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -20,7 +20,8 @@
         <strong>{% blocktrans %}Câu hỏi: {{ result.question.text }}{% endblocktrans %}</strong>
         <ul>
             {% for choice in result.question.choices.all %}
-                <li style="{% choice_style choice result.correct_choice result.selected %}">
+                
+                <li style="{% choice_style choice result.correct_choice result.selected %}"></li>
                     {{ choice.text }} {% choice_icon choice result.correct_choice result.selected result.is_correct %}
                 </li>
             {% endfor %}

@@ -2,6 +2,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from courses.models import Lesson
 from constants import (QUIZ_TITLE_MAX_LENGTH,CHOICE_TEXT_MAX_LENGTH)
+from django.utils import timezone
+from django.conf import settings
 
 class Quiz(models.Model):
     lesson = models.OneToOneField(
@@ -81,3 +83,40 @@ class Choice(models.Model):
 
     def __str__(self):
         return f"{'✔' if self.is_correct else '✖'} {self.text[:50]}"
+class Submission(models.Model):
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.CASCADE,
+        related_name="submissions"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    started_at = models.DateTimeField(default=timezone.now)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    score = models.PositiveIntegerField(default=0)
+    correct_cnt = models.PositiveIntegerField(default=0)
+    wrong_cnt = models.PositiveIntegerField(default=0)
+    skip_cnt = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.user} – {self.quiz} ({self.score} điểm)"
+
+
+class Answer(models.Model):
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="answers"
+    )
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE
+    )
+    choice = models.ForeignKey(
+        Choice,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )

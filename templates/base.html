@@ -1,20 +1,34 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="{{ LANGUAGE_CODE|default:'vi' }}">
 <head>
-    <meta charset="UTF-8">
-    {% load i18n %}
-    <title>{% block title %}{% trans "Tài khoản" %}{% endblock %}</title>
-    {% block extra_css %}{% endblock %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}{{ C.SITE.NAME }}{% endblock %}</title>
+
+  {# Bootstrap 5 + Bootstrap Icons (local static) #}
+  <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.css' %}" rel="stylesheet">
+
+  <link href="{% static 'css/main.css' %}" rel="stylesheet" />
+  {% block extra_css %}{% endblock %}
 </head>
-<body>
-    {% if messages %}
-        <ul>
-            {% for message in messages %}
-                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-    {% block content %}{% endblock %}
+<body class="d-flex flex-column min-vh-100">
+  {% include "components/_navbar.html" %}
+
+  <main class="flex-grow-1">
+    <div class="container py-4">
+      {% include "components/_messages.html" %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  {% include "components/_footer.html" %}
+
+  {# JS local (bundle có sẵn Popper) #}
+  <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/main.js' %}"></script>
+  <script src="{% static 'js/navbar.js' %}"></script>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>
-    

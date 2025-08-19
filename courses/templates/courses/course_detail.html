@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load i18n course_media %}
+
+{% block title %}
+  {% trans "Khóa học" as course_label %}
+  {% firstof course.title course.name course_label %} — {{ C.SITE.NAME }}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Left: nội dung khóa học -->
+  <div class="col-lg-8">
+    <h1 class="h3 mb-1">
+      {% trans "Khóa học" as course_label %}
+      {% firstof course.title course.name course_label %}
+    </h1>
+
+    <div class="text-muted small mb-3">
+      <i class="bi bi-person-circle"></i> {{ course.author_name|default:"" }}
+      <span class="ms-2">
+        <i class="bi bi-people"></i>
+        {% blocktrans count s=course.students_count|default:0 %}{{ s }} học viên{% plural %}{{ s }} học viên{% endblocktrans %}
+      </span>
+    </div>
+
+    <ul class="nav nav-tabs mt-2" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabIntro" type="button">{% trans "Giới thiệu" %}</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabContent" type="button">{% trans "Nội dung" %}</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTeacher" type="button">{% trans "Giảng viên" %}</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabReviews" type="button">{% trans "Đánh giá" %}</button></li>
+    </ul>
+
+    <div class="tab-content border border-top-0 rounded-bottom p-3">
+      <div class="tab-pane fade show active" id="tabIntro">
+        {{ course.description|default:""|safe }}
+      </div>
+
+      {# ======================= NỘI DUNG KHÓA HỌC ======================= #}
+      <div class="tab-pane fade" id="tabContent">
+        {% with can_access=user_is_enrolled %}
+          {% regroup lessons by section as section_groups %}
+
+          <div class="accordion" id="courseAccordion">
+            {% for grp in section_groups %}
+              {% with sec=grp.grouper sec_id="sec"|add:forloop.counter|stringformat:"s" %}
+              <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="{{ sec_id }}-header">
+                  <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#{{ sec_id }}-collapse"
+                          aria-expanded="{{ forloop.first|yesno:'true,false' }}"
+                          aria-controls="{{ sec_id }}-collapse">
+                    {% if sec and sec.title %}
+                      {{ sec.title }}
+                    {% else %}
+                      {% trans "Nội dung khóa học" as content_label %}
+                      {% trans "Phần" as section_label %}
+                      {{ content_label }} — {{ section_label }} {{ forloop.counter }}
+                    {% endif %}
+                  </button>
+                </h2>
+
+                <div id="{{ sec_id }}-collapse" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="{{ sec_id }}-header" data-bs-parent="#courseAccordion">
+                  <div class="accordion-body p-0">
+                    <ul class="list-group list-group-flush">
+                      {% for lesson in grp.list %}
+                        {# ---- Build URL một lần cho mỗi lesson (slug hoặc by-id) ---- #}
+                        {% if course.slug %}
+                          {% url 'courses:lesson' course.slug lesson.pk as lesson_url %}
+                          {% url 'courses:quiz_start' course.slug lesson.pk as quiz_url %}
+                        {% else %}
+                          {% url 'courses:lesson_by_id' course.id lesson.pk as lesson_url %}
+                          {% url 'courses:quiz_start_by_id' course.id lesson.pk as quiz_url %}
+                        {% endif %}
+
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi {% if lesson.kind == LessonKind.QUIZ %}bi-question-circle{% else %}bi-play-circle{% endif %}"></i>
+                            <span class="text-truncate">
+                              {% if lesson.order %}<span class="text-muted">{{ lesson.order }}.</span>{% endif %}
+                              {{ lesson.title }}
+                              {% if lesson.is_preview %}<span class="badge rounded-pill bg-success ms-2">{% trans "Xem thử" %}</span>{% endif %}
+                            </span>
+                          </div>
+
+                          <div class="d-flex align-items-center gap-3">
+                            {% if lesson.duration_text %}
+                              <span class="small text-muted">{{ lesson.duration_text }}</span>
+                            {% endif %}
+
+                            {# ===== Luôn hiển thị 2 nút: Xem bài + Test (nếu được truy cập) ===== #}
+                            {% if can_access or lesson.is_preview %}
+                              <a class="btn btn-sm btn-outline-primary" href="{{ lesson_url }}">{% trans "Xem bài" %}</a>
+                              <a class="btn btn-sm btn-primary" href="{{ quiz_url }}">{% trans "Test" %}</a>
+                            {% else %}
+                              <button type="button" class="btn btn-sm btn-outline-secondary disabled"
+                                      data-bs-toggle="tooltip" data-bs-title="{% trans 'Đăng nhập và được duyệt để xem' %}">
+                                <i class="bi bi-lock-fill me-1"></i>{% trans "Khóa" %}
+                              </button>
+                            {% endif %}
+                          </div>
+                        </li>
+                      {% empty %}
+                        <li class="list-group-item text-muted">{% trans "Chưa có bài học." %}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+
+          <script>
+            // Tooltip cho nút bị khoá
+            document.addEventListener('DOMContentLoaded', function () {
+              const t = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+              t.forEach(el => new bootstrap.Tooltip(el));
+            });
+          </script>
+        {% endwith %}
+      </div>
+      {# ======================= /NỘI DUNG KHÓA HỌC ======================= #}
+
+      <div class="tab-pane fade" id="tabTeacher">
+        {{ course.teacher_bio|default:""|safe }}
+      </div>
+
+      <div class="tab-pane fade" id="tabReviews">
+        <!-- TODO: hiển thị review -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: card đăng ký/ảnh bìa -->
+  <div class="col-lg-4">
+    <div class="card sticky-top" style="top: 80px;">
+      <div class="ratio ratio-16x9">
+        {# Dùng custom template tag để tránh lặp code xử lý ảnh bìa #}
+        {% course_cover_img course classes="card-img-top object-fit-cover" %}
+      </div>
+
+      <div class="card-body">
+        <ul class="list-unstyled small text-muted mb-3">
+          <li><i class="bi bi-clock"></i> {% trans "Thời lượng:" %} {{ course.duration_text|default:"—" }}</li>
+          <li><i class="bi bi-collection"></i> {{ lessons|length }} {% trans "Bài học" %}</li>
+          <li><i class="bi bi-display"></i> {% trans "Học trên: Mobile, TV, PC" %}</li>
+        </ul>
+
+        {% if course.slug %}
+          {% url 'courses:start' course.slug as start_url %}
+          {% url 'courses:enroll' course.slug as enroll_url %}
+        {% endif %}
+
+        {% if user_is_enrolled %}
+          <a class="btn btn-teal w-100" href="{% firstof start_url '#' %}">{% trans "Vào học" %}</a>
+        {% else %}
+          <form method="post" action="{% firstof enroll_url '#' %}">
+            {% csrf_token %}
+            <button class="btn btn-teal w-100">
+              {{ C.COURSE_CARD.ENROLL_BUTTON_TEXT|default:_("Đăng ký học") }}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

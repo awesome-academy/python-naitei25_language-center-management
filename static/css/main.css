@@ -1,0 +1,47 @@
+:root{
+  --teal:#006699;     /* <— đổi từ màu cũ */
+  --teal-600:#00577a; /* tối hơn chút cho hover */
+}
+.bg-teal{ background-color: var(--teal) !important; }
+.btn-teal{ background-color: var(--teal); color:#006699; }
+.btn-teal:hover{ background-color: var(--teal-600); color:#006699; }
+.btn-outline-teal{ color:var(--teal); border-color:var(--teal); }
+.btn-outline-teal:hover{ background:var(--teal); color:#006699; }
+
+
+.navbar.bg-teal .nav-link.active{ font-weight:600; }
+
+.course-card .card-img-top{ aspect-ratio: 16/9; object-fit: cover; }
+.object-fit-cover { object-fit: cover; width: 100%; height: 100%; }
+
+/* 2 và 3 dòng truncate */
+.text-truncate-2, .text-truncate-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.text-truncate-2 { -webkit-line-clamp: 2; }
+.text-truncate-3 { -webkit-line-clamp: 3; }
+
+/* Brand navbar background */
+.bg-brand {
+  background-color: #003399 !important;
+}
+
+/* (tùy chọn) Điều chỉnh màu khi hover để dễ nhìn hơn */
+.navbar.bg-brand .nav-link:hover,
+.navbar.bg-brand .navbar-brand:hover {
+  opacity: .9;
+}
+
+/* đổi màu khi list-group-item active */
+.list-group-item.active {
+    background-color: #f8f9fa !important; /* xám nhạt */
+    color: #000 !important;
+    border-color: #dee2e6 !important;
+}
+
+/* icon trong item active */
+.list-group-item.active i {
+    color: #0d6efd !important;
+}

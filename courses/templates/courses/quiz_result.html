@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center p-5 bg-white rounded shadow-sm">
+  <div class="display-6 mb-2">Bạn đã hoàn thành bài thi</div>
+
+  <h1 class="fw-bold mb-1">
+    {{ object.score }}/{{ object.quiz.questions.count }} Điểm
+  </h1>
+  <div class="text-success mb-3">(Đạt)</div>
+
+  <div class="mb-3">
+    <span class="me-3">✅ Đúng: {{ object.correct_cnt }}</span>
+    <span class="me-3">❌ Sai: {{ object.wrong_cnt }}</span>
+    <span class="me-3">⭕ Bỏ qua: {{ object.skip_cnt }}</span>
+  </div>
+
+  {% if object.submitted_at %}
+    <div class="text-muted mb-4">
+      Thời gian làm bài: {{ duration_text }}
+    </div>
+  {% endif %}
+
+  {# Quay về khóa học & làm lại (slug hoặc by-id) #}
+  {% if object.quiz.lesson.course.slug %}
+    {% url 'courses:detail' object.quiz.lesson.course.slug as back_url %}
+    {% url 'courses:quiz_start' object.quiz.lesson.course.slug object.quiz.lesson.id as retry_url %}
+  {% else %}
+    {% url 'courses:detail_by_id' object.quiz.lesson.course.id as back_url %}
+    {% url 'courses:quiz_start_by_id' object.quiz.lesson.course.id object.quiz.lesson.id as retry_url %}
+  {% endif %}
+
+  <div class="d-flex justify-content-center gap-2">
+    <a class="btn btn-success" href="{{ back_url }}">Về khóa học</a>
+    <a class="btn btn-outline-primary" href="{{ retry_url }}">Làm lại</a>
+  </div>
+
+  <div class="text-muted mt-3">Chúc mừng bạn đã hoàn thành bài kiểm tra!</div>
+</div>
+
+<hr>
+
+<h5 class="mb-3">Xem lại câu trả lời</h5>
+
+<ol class="ps-3">
+  {% for ans in answers %}
+    <li class="mb-3">
+      <div class="fw-semibold">
+        {{ ans.question.text }}
+        {% if not ans.choice_id %}
+          <span class="badge bg-secondary ms-2">Bỏ qua</span>
+        {% endif %}
+      </div>
+
+      <ul class="list-unstyled ms-3 mt-2">
+        {% for ch in ans.question.choices.all %}
+          <li class="mb-1">
+            {# ✔ cho đáp án đúng; ✘ cho phương án bạn đã chọn nhưng sai; ○ cho phương án còn lại #}
+            {% if ch.is_correct %}
+              <span class="text-success me-1">✔</span>
+            {% elif ch.id == ans.choice_id %}
+              <span class="text-danger me-1">✘</span>
+            {% else %}
+              <span class="text-muted me-1">○</span>
+            {% endif %}
+
+            {{ ch.text }}
+
+            {% if ch.id == ans.choice_id %}
+              <span class="badge bg-light text-dark border ms-2">Bạn chọn</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </li>
+  {% endfor %}
+</ol>
+{% endblock %}
