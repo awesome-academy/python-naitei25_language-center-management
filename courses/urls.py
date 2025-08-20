@@ -1,50 +1,54 @@
 # courses/urls.py
 from django.urls import path
-from .views import (
-    CourseListView, MyCoursesView,
-    LessonListView, LessonCreateView, LessonUpdateView, LessonDeleteView,
-    CourseProgressView,
-    LessonDetailView, LessonLearnView,
-    CourseDetailView,
-    QuizStartView, QuizTakeView, QuizResultView,
-)
+from . import views
 
 app_name = "courses"
 
 urlpatterns = [
-    # Danh sách khóa học
-    path("", CourseListView.as_view(), name="list"),
-    path("mine/", MyCoursesView.as_view(), name="my"),
+    # ===== Course list / my courses =====
+    path("", views.CourseListView.as_view(), name="list"),
+    path("mine/", views.MyCoursesView.as_view(), name="my"),
+    
+    # ===== Lessons CRUD (authoring) by course_id =====
+    path("<int:course_id>/lessons/",      views.LessonListView.as_view(),   name="lesson_list"),
+    path("<int:course_id>/lessons/new/",  views.LessonCreateView.as_view(), name="lesson_create"),
+    path("lessons/<int:pk>/edit/",        views.LessonUpdateView.as_view(), name="lesson_update"),
+    path("lessons/<int:pk>/delete/",      views.LessonDeleteView.as_view(), name="lesson_delete"),
 
-    # CRUD bài học theo course_id (khu soạn nội dung)
-    path("<int:course_id>/lessons/",        LessonListView.as_view(),  name="lesson_list"),
-    path("<int:course_id>/lessons/new/",    LessonCreateView.as_view(), name="lesson_create"),
-    path("lessons/<int:pk>/edit/",          LessonUpdateView.as_view(), name="lesson_update"),
-    path("lessons/<int:pk>/delete/",        LessonDeleteView.as_view(), name="lesson_delete"),
+    # ===== Course progress =====
+    path("<int:course_id>/progress/",     views.CourseProgressView.as_view(), name="course_progress"),
 
-    # Tiến độ khóa học
-    path("<int:course_id>/progress/",       CourseProgressView.as_view(), name="course_progress"),
+    # ===== Learn view (playlist) =====
+    # by-id
+    path("by-id/<int:course_id>/learn/<int:lesson_id>/", views.LessonLearnView.as_view(), name="lesson_by_id"),
+    # by-slug
+    path("<slug:slug>/learn/<int:lesson_id>/",           views.LessonLearnView.as_view(), name="lesson"),
 
-    # Chi tiết khóa học theo ID (đặt trước route theo slug để tránh xung đột)
-    path("by-id/<int:id>/", CourseDetailView.as_view(), name="detail_by_id"),
-    path("<slug:slug>/",     CourseDetailView.as_view(), name="detail"),
-    # Xem 1 bài đơn lẻ (template lesson_detail) — có slug cho đẹp URL
-    path("<slug:slug>/lesson/<int:pk>/",    LessonDetailView.as_view(),   name="lesson_detail"),
+    # ===== Single lesson detail (optional page) =====
+    path("<slug:slug>/lesson/<int:pk>/",  views.LessonDetailView.as_view(), name="lesson_detail"),
 
-    # Học bài với layout có playlist (learn)
-    path("by-id/<int:course_id>/learn/<int:lesson_id>/", LessonLearnView.as_view(), name="lesson_by_id"),
-    path("<slug:slug>/learn/<int:lesson_id>/", LessonLearnView.as_view(), name="lesson"),
+    # ===== QUIZ routes =====
+    # by-id
+    path("by-id/<int:course_id>/quiz/<int:lesson_id>/start/",    views.QuizStartView.as_view(),  name="quiz_start_by_id"),
+    path("by-id/<int:course_id>/quiz/take/<int:submission_id>/", views.QuizTakeView.as_view(),   name="quiz_take_by_id"),
+    path("by-id/<int:course_id>/quiz/result/<int:submission_id>/", views.QuizResultView.as_view(), name="quiz_result_by_id"),
+    # by-slug
+    path("<slug:slug>/quiz/<int:lesson_id>/start/",    views.QuizStartView.as_view(),  name="quiz_start"),
+    path("<slug:slug>/quiz/take/<int:submission_id>/", views.QuizTakeView.as_view(),   name="quiz_take"),
+    path("<slug:slug>/quiz/result/<int:submission_id>/", views.QuizResultView.as_view(), name="quiz_result"),
 
-    # QUIZ — by-id (PHẢI có 3 route này)
-    path("by-id/<int:course_id>/quiz/<int:lesson_id>/start/",     QuizStartView.as_view(),  name="quiz_start_by_id"),
-    path("by-id/<int:course_id>/quiz/take/<int:submission_id>/",  QuizTakeView.as_view(),   name="quiz_take_by_id"),
-    path("by-id/<int:course_id>/quiz/result/<int:submission_id>/",QuizResultView.as_view(), name="quiz_result_by_id"),
+    # ===== Start & Enroll (course-level actions) =====
+    # by-id
+    path("by-id/<int:pk>/start/",   views.start_course_id,   name="start_by_id"),
+    path("by-id/<int:pk>/enroll/",  views.enroll_request,    name="enroll_by_id"),
+    # by-slug
+    path("<slug:slug>/start/",      views.start_course_slug, name="start"),
+    path("<slug:slug>/enroll/",     views.enroll_request_slug, name="enroll"),
 
-    # QUIZ — theo slug (nếu sau này bạn có slug)
-    path("<slug:slug>/quiz/<int:lesson_id>/start/",     QuizStartView.as_view(),  name="quiz_start"),
-    path("<slug:slug>/quiz/take/<int:submission_id>/",  QuizTakeView.as_view(),   name="quiz_take"),
-    path("<slug:slug>/quiz/result/<int:submission_id>/",QuizResultView.as_view(), name="quiz_result"),
+    # ===== Course detail =====
+    path("by-id/<int:pk>/", views.CourseDetailView.as_view(), name="detail_by_id"),
+    path("<slug:slug>/",    views.CourseDetailView.as_view(), name="detail"),
 
-    # Chi tiết khóa học theo slug (đặt cuối cùng)
-    path("<slug:slug>/",                    CourseDetailView.as_view(),   name="detail"),
+    # ===== Enrollment admin action (optional) =====
+    path("enrollment/<int:enrollment_id>/approve/", views.approve_enrollment, name="approve_enrollment"),
 ]

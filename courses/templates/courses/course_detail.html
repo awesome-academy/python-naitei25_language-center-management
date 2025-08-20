@@ -37,6 +37,7 @@
 
       {# ======================= NỘI DUNG KHÓA HỌC ======================= #}
       <div class="tab-pane fade" id="tabContent">
+        {# Dùng cờ user_is_enrolled do view cung cấp (đã là trạng thái APPROVED) #}
         {% with can_access=user_is_enrolled %}
           {% regroup lessons by section as section_groups %}
 
@@ -87,7 +88,7 @@
                               <span class="small text-muted">{{ lesson.duration_text }}</span>
                             {% endif %}
 
-                            {# ===== Luôn hiển thị 2 nút: Xem bài + Test (nếu được truy cập) ===== #}
+                            {# ===== Chỉ mở khóa nếu đã được duyệt hoặc bài xem thử ===== #}
                             {% if can_access or lesson.is_preview %}
                               <a class="btn btn-sm btn-outline-primary" href="{{ lesson_url }}">{% trans "Xem bài" %}</a>
                               <a class="btn btn-sm btn-primary" href="{{ quiz_url }}">{% trans "Test" %}</a>
@@ -146,20 +147,42 @@
           <li><i class="bi bi-display"></i> {% trans "Học trên: Mobile, TV, PC" %}</li>
         </ul>
 
+        {# Build URL cho start/enroll: ưu tiên slug, fallback by-id #}
         {% if course.slug %}
           {% url 'courses:start' course.slug as start_url %}
           {% url 'courses:enroll' course.slug as enroll_url %}
+        {% else %}
+          {% url 'courses:start_by_id' course.id as start_url %}
+          {% url 'courses:enroll_by_id' course.id as enroll_url %}
         {% endif %}
 
-        {% if user_is_enrolled %}
-          <a class="btn btn-teal w-100" href="{% firstof start_url '#' %}">{% trans "Vào học" %}</a>
+        {# Logic hiển thị nút theo trạng thái đăng ký #}
+        {% if user.is_authenticated %}
+          {% with enrollment=enrollment %}
+            {% if enrollment and enrollment.status == 'approved' %}
+              <a class="btn btn-teal w-100" href="{{ start_url }}">{% trans "Vào học" %}</a>
+
+            {% elif enrollment and enrollment.status == 'pending' %}
+              <button class="btn btn-secondary w-100" disabled>
+                {% trans "Đang chờ duyệt" %}
+              </button>
+              <div class="small text-muted mt-2">
+                {% trans "Bạn sẽ được thông báo khi yêu cầu được chấp thuận." %}
+              </div>
+
+            {% else %}
+              <form method="post" action="{{ enroll_url }}">
+                {% csrf_token %}
+                <button class="btn btn-teal w-100">
+                  {{ C.COURSE_CARD.ENROLL_BUTTON_TEXT|default:_("Đăng ký học") }}
+                </button>
+              </form>
+            {% endif %}
+          {% endwith %}
         {% else %}
-          <form method="post" action="{% firstof enroll_url '#' %}">
-            {% csrf_token %}
-            <button class="btn btn-teal w-100">
-              {{ C.COURSE_CARD.ENROLL_BUTTON_TEXT|default:_("Đăng ký học") }}
-            </button>
-          </form>
+          <a class="btn btn-outline-primary w-100" href="{% url 'login' %}?next={{ request.path|urlencode }}">
+            {% trans "Đăng nhập để đăng ký" %}
+          </a>
         {% endif %}
       </div>
     </div>

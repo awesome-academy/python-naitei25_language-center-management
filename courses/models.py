@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from constants import MAX_STATUS_LENGTH, STATUS_CHOICES, EnrollmentStatus
 
 from constants import (
     # Course & Lesson
@@ -129,3 +130,33 @@ class LessonKind(models.TextChoices):
     VIDEO = "VIDEO", _("Video")
     NOTE  = "NOTE",  _("Ghi chú")
     QUIZ  = "QUIZ",  _("Bài kiểm tra")
+
+class Enrollment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+        verbose_name=_("User"),
+    )
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+        verbose_name=_("Course"),
+    )
+    status = models.CharField(
+        _("Status"),
+        max_length=MAX_STATUS_LENGTH,
+        choices=STATUS_CHOICES,
+        default=EnrollmentStatus.PENDING.value,
+    )
+    created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
+    approved_at = models.DateTimeField(_("Approved at"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("Enrollment")
+        verbose_name_plural = _("Enrollments")
+        unique_together = ("user", "course")
+
+    def __str__(self):
+        return f"{self.user} → {self.course} [{self.status}]"
